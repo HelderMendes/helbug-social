@@ -1,84 +1,88 @@
 import { validateRequest } from "@/auth";
 import prisma from "@/db";
-import { userDataSelect } from "@/lib/types";
+import { getUserDataSelect } from "@/lib/types";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import React, { Suspense } from "react";
+import { Suspense } from "react";
 import UserAvatar from "./UserAvatar";
-import { Button } from "./ui/button";
 import { unstable_cache } from "next/cache";
+import FollowButton from "./FollowButton";
 
-const TrendsSidebar = () => {
+export default function TrendsSidebar() {
   return (
-    <div className="w-73 sticky top-[5.25rem] hidden h-fit flex-none space-y-5 md:block lg:w-80">
+    <div className="sticky top-[5.25rem] hidden h-fit w-72 flex-none space-y-5 md:block lg:w-80">
       <Suspense fallback={<Loader2 className="mx-auto animate-spin" />}>
         <WhoToFollow />
         <TrendingTopics />
       </Suspense>
     </div>
   );
-};
+}
 
 async function WhoToFollow() {
   const { user } = await validateRequest();
 
   if (!user) return null;
 
-  // //Using artificial delay...
-  // await new Promise((run) => setTimeout(run, 5000));
-
   const usersToFollow = await prisma.user.findMany({
     where: {
       NOT: {
         id: user.id,
       },
+      followers: {
+        none: {
+          followerId: user.id,
+        },
+      },
     },
-    select: userDataSelect,
-    take: 5,
+    select: getUserDataSelect(user.id),
+    take: 10,
   });
+
   return (
     <div className="space-y-5 rounded-2xl bg-card p-5 shadow-sm">
       <div className="text-xl font-bold">Who to follow</div>
-      {usersToFollow.map((userToFollow) => (
-        <div
-          className="flex items-center justify-between gap-3"
-          key={userToFollow.id}
-        >
+      {usersToFollow.map((user) => (
+        <div key={user.id} className="flex items-center justify-between gap-3">
           <Link
-            href={`/users/${userToFollow.username}`}
+            href={`/users/${user.username}`}
             className="flex items-center gap-3"
           >
-            <UserAvatar
-              avatarUrl={userToFollow.avatarUrl}
-              className="flex-none"
-            />
+            <UserAvatar avatarUrl={user.avatarUrl} className="flex-none" />
             <div>
               <p className="line-clamp-1 break-all font-semibold hover:underline">
-                {userToFollow.displayName}
+                {user.displayName}
               </p>
               <p className="line-clamp-1 break-all text-muted-foreground">
-                @{userToFollow.username}
+                @{user.username}
               </p>
             </div>
           </Link>
-          <Button>Follow</Button>
+          <FollowButton
+            userId={user.id}
+            initialState={{
+              followers: user._count.followers,
+              isFollowedByUser: user.followers.some(
+                ({ followerId }) => followerId === user.id,
+              ),
+            }}
+          />
         </div>
       ))}
     </div>
   );
 }
 
-export default TrendsSidebar;
-
 const getTrendingTopics = unstable_cache(
   async () => {
-    const result = await prisma.$queryRaw<
-      { hashtag: string; count: bigint }[]
-    >`SELECT LOWER(unnest(regexp_matches(content, '#[[:alnum:]_]+', 'g'))) AS hashtag, COUNT(*) AS count 
-    FROM posts 
-    GROUP BY (hashtag) 
-    ORDER BY count DESC, hashtag ASC 
-    LIMIT 5`;
+    const result = await prisma.$queryRaw<{ hashtag: string; count: bigint }[]>`
+            SELECT LOWER(unnest(regexp_matches(content, '#[[:alnum:]_]+', 'g'))) AS hashtag, COUNT(*) AS count
+            FROM posts
+            GROUP BY (hashtag)
+            ORDER BY count DESC, hashtag ASC
+            LIMIT 10
+        `;
+
     return result.map((row) => ({
       hashtag: row.hashtag,
       count: Number(row.count),
@@ -91,15 +95,16 @@ const getTrendingTopics = unstable_cache(
 );
 
 async function TrendingTopics() {
-  const TrendingTopics = await getTrendingTopics();
+  const trendingTopics = await getTrendingTopics();
 
   return (
     <div className="space-y-5 rounded-2xl bg-card p-5 shadow-sm">
-      {TrendingTopics.map(({ hashtag, count }) => {
+      <div className="text-xl font-bold">Trending topics</div>
+      {trendingTopics.map(({ hashtag, count }) => {
         const title = hashtag.split("#")[1];
 
         return (
-          <Link href={`/hashtag/${title}`} key={title} className="block">
+          <Link key={title} href={`/hashtag/${title}`} className="block">
             <p
               className="line-clamp-1 break-all font-semibold hover:underline"
               title={hashtag}
@@ -120,6 +125,6 @@ async function TrendingTopics() {
 export function formatNumber(n: number): string {
   return Intl.NumberFormat("nl-NL", {
     notation: "compact",
-    maximunFractionDigits: 1,
+    maximumFractionDigits: 1,
   }).format(n);
 }
