@@ -1,5 +1,7 @@
 import { validateRequest } from "@/auth";
+import FollowerCount from "@/components/FollowerCount";
 import TrendsSidebar from "@/components/TrendsSidebar";
+import { formatNumber } from "@/lib/utils";
 import UserAvatar from "@/components/UserAvatar";
 import prisma from "@/db";
 import { FollowerInfo, getUserDataSelect, UserData } from "@/lib/types";
@@ -7,6 +9,9 @@ import { formatDate } from "date-fns";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
+import { Button } from "@/components/ui/button";
+import FollowButton from "@/components/FollowButton";
+import UserPosts from "./UserPosts";
 
 interface PageProps {
   params: { username: string };
@@ -66,19 +71,19 @@ export default async function Page({ params }: PageProps) {
             {user.displayName}&apos;s posts
           </h2>
         </div>
-        {/* <UserPosts userId={user.id} /> */}
+        <UserPosts userId={user.id} />
       </div>
       <TrendsSidebar />
     </main>
   );
 }
 
-interface UserPorfileProps {
+interface UserProfileProps {
   user: UserData;
   loggedInUserId: string;
 }
 
-async function UserProfile({ user, loggedInUserId }: UserPorfileProps) {
+async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
   const followerInfo: FollowerInfo = {
     followers: user._count.followers,
     isFollowedByUser: user.followers.some(
@@ -99,8 +104,30 @@ async function UserProfile({ user, loggedInUserId }: UserPorfileProps) {
             <div className="text-muted-foreground">(@{user.username})</div>
           </div>
           <div>Member since {formatDate(user.createdAt, "MMM d yyyy")}</div>
+          <div className="flex items-center gap-3">
+            <span>
+              Posts:{" "}
+              <span className="font-semibold">
+                {formatNumber(user._count?.posts)}
+              </span>
+              <FollowerCount userId={user.id} initialState={followerInfo} />
+            </span>
+          </div>
         </div>
+        {user.id === loggedInUserId ? (
+          <Button>Edit Profile</Button>
+        ) : (
+          <FollowButton initialState={followerInfo} userId={user.id} />
+        )}
       </div>
+      {user.bio && (
+        <>
+          <hr />
+          <div className="overflow-hidden whitespace-pre-line break-words">
+            {user.bio}
+          </div>
+        </>
+      )}
     </div>
   );
 }

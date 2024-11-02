@@ -15,8 +15,8 @@ export function getUserDataSelect(loggedInUserId: string) {
     },
     _count: {
       select: {
-        followers: true,
         posts: true,
+        followers: true,
       },
     },
   } satisfies Prisma.UserSelect;
