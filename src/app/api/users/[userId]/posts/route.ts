@@ -7,9 +7,9 @@ export async function GET(
   req: NextRequest,
   context: { params: { userId: string } },
 ) {
-  const { params } = await context; // Await context if required
+  // const { params } = await context; // Await context if required
 
-  const { userId } = params; // Extract userId after the await
+  const { userId } = context.params; // Extract userId after the await
 
   try {
     const cursor = req.nextUrl.searchParams.get("cursor") || undefined;
@@ -17,7 +17,7 @@ export async function GET(
     // //Test timeOut()
     // await new Promise((r) => setTimeout(r, 2000));
 
-    const pageSize = 10; //fetch pageSize posts
+    const pageSize = 5; //fetch pageSize posts
 
     const { user } = await validateRequest();
 

@@ -6,8 +6,7 @@ export async function GET(
   req: Request,
   context: { params: { userId: string } },
 ) {
-  const { params } = await context; // Await context if required
-  const { userId } = params; // Extract userId after the await
+  const { userId } = context.params;
 
   try {
     const { user: loggedInUser } = await validateRequest();
@@ -55,8 +54,8 @@ export async function POST(
   req: Request,
   context: { params: { userId: string } },
 ) {
-  const { params } = await context;
-  const { userId } = params;
+  // const { params } = await context;
+  const { userId } = context.params;
 
   try {
     const { user: loggedInUser } = await validateRequest();
@@ -92,8 +91,8 @@ export async function DELETE(
   req: Request,
   context: { params: { userId: string } },
 ) {
-  const { params } = await context;
-  const { userId } = params;
+  // const { params } = await context;
+  const { userId } = context.params;
 
   try {
     const { user: loggedInUser } = await validateRequest();
