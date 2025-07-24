@@ -21,7 +21,7 @@ export const loginSchema = z.object({
 export type LoginValues = z.infer<typeof loginSchema>;
 
 export const createPostSchema = z.object({
-  content: requiredString.min(10, "Must be at least 10 characters"),
+  content: requiredString.min(1, "Content is required"),
   mediaIds: z.array(z.string()).max(5, "There is a maximum of 5 uploads"),
 });
 

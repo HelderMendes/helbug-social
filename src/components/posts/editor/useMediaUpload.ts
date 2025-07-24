@@ -20,9 +20,7 @@ export default function useMediaUpload() {
         return new File(
           [file],
           `attachment_${crypto.randomUUID()}.${extension}`,
-          {
-            type: file.type,
-          },
+          { type: file.type },
         );
       });
 
@@ -52,10 +50,7 @@ export default function useMediaUpload() {
     },
     onUploadError(e) {
       setAttachments((prev) => prev.filter((a) => !a.isUploading));
-      toast({
-        variant: "destructive",
-        description: e.message,
-      });
+      toast({ variant: "destructive", description: e.message });
     },
   });
 
