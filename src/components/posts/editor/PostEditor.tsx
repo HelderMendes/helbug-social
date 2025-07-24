@@ -16,13 +16,8 @@ export default function PostEditor() {
   const editor = useEditor(
     {
       extensions: [
-        StarterKit.configure({
-          bold: false,
-          italic: false,
-        }),
-        Placeholder.configure({
-          placeholder: "What's in your mind?",
-        }),
+        StarterKit.configure({ bold: false, italic: false }),
+        Placeholder.configure({ placeholder: "What's in your mind?" }),
       ],
       editorProps: {
         attributes: {
@@ -53,10 +48,7 @@ export default function PostEditor() {
     [],
   );
 
-  const input =
-    editor?.getText({
-      blockSeparator: "\n",
-    }) || "";
+  const input = editor?.getText({ blockSeparator: "\n" }) || "";
 
   // async function onSubmit() {
   //   await submitPost(input);

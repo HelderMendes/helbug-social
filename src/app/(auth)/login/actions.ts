@@ -2,11 +2,12 @@
 
 import { lucia } from "@/auth";
 import { LoginValues, loginSchema } from "@/lib/validation";
+
 import { verify } from "@node-rs/argon2";
-import { isRedirectError } from "next/dist/client/components/redirect";
 import { redirect } from "next/navigation";
 import prisma from "@/db";
 import { cookies } from "next/headers";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 
 export async function login(
   credentials: LoginValues,

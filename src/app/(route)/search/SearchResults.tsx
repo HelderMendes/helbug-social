@@ -1,19 +1,17 @@
 "use client";
 
+import InfiniteScrollContainer from "@/components/InfiniteScrollContainer";
 import Post from "@/components/posts/Post";
+import PostsLoadingSkeleton from "@/components/posts/PostsLoadingSkeleton";
 import kyInstance from "@/lib/ky";
 import { PostsPage } from "@/lib/types";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
-import InfiniteScrollContainer from "@/components/InfiniteScrollContainer";
-import PostsLoadingSkeleton from "@/components/posts/PostsLoadingSkeleton";
-// import DeletePostDialog from "@/components/posts/DeletePostDialog";
 
-interface UserPostsProps {
-  userId: string;
+interface SearchResultsProps {
+  query: string;
 }
 
-export default function UserPosts({ userId }: UserPostsProps) {
+export default function SearchResults({ query }: SearchResultsProps) {
   const {
     data,
     fetchNextPage,
@@ -22,26 +20,31 @@ export default function UserPosts({ userId }: UserPostsProps) {
     isFetchingNextPage,
     status,
   } = useInfiniteQuery({
-    queryKey: ["post-feed", "user-posts", userId],
+    queryKey: ["post-feed", "search", query],
     queryFn: ({ pageParam }) =>
       kyInstance
-        .get(
-          `/api/users/${userId}/posts`,
-          pageParam ? { searchParams: { cursor: pageParam } } : {},
-        )
+        .get("/api/posts/search", {
+          searchParams: {
+            q: query,
+            ...(pageParam ? { cursor: pageParam } : {}),
+          },
+        })
         .json<PostsPage>(),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
+    gcTime: 0,
   });
 
   const posts = data?.pages.flatMap((page) => page.posts) || [];
 
-  // if (status === "pending") return <Loader2 className="mx-auto animate-spin" />;
-  if (status === "pending") return <PostsLoadingSkeleton />;
+  if (status === "pending") {
+    return <PostsLoadingSkeleton />;
+  }
+
   if (status === "success" && !posts.length && !hasNextPage) {
     return (
       <p className="text-center text-muted-foreground">
-        This user hasn&apos;t posted yet...
+        No posts found for this search.
       </p>
     );
   }
@@ -49,7 +52,7 @@ export default function UserPosts({ userId }: UserPostsProps) {
   if (status === "error") {
     return (
       <p className="text-center text-destructive">
-        An error as occurred while attempting loading the posts.
+        An error occurred while loading posts.
       </p>
     );
   }
@@ -62,10 +65,7 @@ export default function UserPosts({ userId }: UserPostsProps) {
       {posts.map((post) => (
         <Post key={post.id} post={post} />
       ))}
-      {isFetchingNextPage && <Loader2 className="mx-auto my-3 animate-spin" />}
-      {/* <Button onClick={() => fetchNextPage()}>Load more pages</Button> */}
-
-      {/* <DeletePostDialog open onClose={() => {}} post={posts[0]} /> */}
+      {isFetchingNextPage && <PostsLoadingSkeleton />}
     </InfiniteScrollContainer>
   );
 }

@@ -5,13 +5,12 @@ import { NextRequest } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  context: { params: { userId: string } },
+  context: { params: Promise<{ userId: string }> },
 ) {
-  // const { params } = await context; // Await context if required
-
-  const { userId } = context.params; // Extract userId after the await
-
   try {
+    // Await the params to ensure they are properly resolved
+    const { userId } = await context.params;
+
     const cursor = req.nextUrl.searchParams.get("cursor") || undefined;
 
     // //Test timeOut()
@@ -21,7 +20,9 @@ export async function GET(
 
     const { user } = await validateRequest();
 
-    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const posts = await prisma.post.findMany({
       where: { userId },
@@ -33,14 +34,15 @@ export async function GET(
 
     const nextCursor = posts.length > pageSize ? posts[pageSize].id : null;
 
-    const data: PostsPage = {
-      posts: posts.slice(0, pageSize),
-      nextCursor,
-    };
+    const data: PostsPage = { posts: posts.slice(0, pageSize), nextCursor };
 
-    return Response.json(data);
+    // return Response.json(data);
+    return new Response(JSON.stringify(data));
   } catch (error) {
     console.error(error);
-    return Response.json({ error: "Internal Server Error" }, { status: 500 });
+    // return Response.json({ error: "Internal Server Error" }, { status: 500 });
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+    });
   }
 }

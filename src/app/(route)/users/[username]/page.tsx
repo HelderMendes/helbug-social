@@ -12,19 +12,16 @@ import { cache } from "react";
 import { Button } from "@/components/ui/button";
 import FollowButton from "@/components/FollowButton";
 import UserPosts from "./UserPosts";
+import EditProfileButton from "./EditProfileButton";
+import Linkify from "@/components/Linkify";
 
 interface PageProps {
-  params: { username: string };
+  params: Promise<{ username: string }>;
 }
 
 const getUser = cache(async (username: string, loggedInUserId: string) => {
   const user = await prisma.user.findFirst({
-    where: {
-      username: {
-        equals: username,
-        mode: "insensitive",
-      },
-    },
+    where: { username: { equals: username, mode: "insensitive" } },
     select: getUserDataSelect(loggedInUserId),
   });
 
@@ -43,9 +40,7 @@ export async function generateMetadata({
 
   const user = await getUser(username, loggedInUser.id);
 
-  return {
-    title: `${user.displayName} (@${user.username})`,
-  };
+  return { title: `${user.displayName} (@${user.username})` };
 }
 
 export default async function Page({ params }: PageProps) {
@@ -115,7 +110,7 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
           </div>
         </div>
         {user.id === loggedInUserId ? (
-          <Button>Edit Profile</Button>
+          <EditProfileButton user={user} />
         ) : (
           <FollowButton initialState={followerInfo} userId={user.id} />
         )}
@@ -123,9 +118,11 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
       {user.bio && (
         <>
           <hr />
-          <div className="overflow-hidden whitespace-pre-line break-words">
-            {user.bio}
-          </div>
+          <Linkify>
+            <div className="overflow-hidden whitespace-pre-line break-words">
+              {user.bio}
+            </div>
+          </Linkify>
         </>
       )}
     </div>

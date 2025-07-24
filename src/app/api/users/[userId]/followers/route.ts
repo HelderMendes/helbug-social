@@ -1,29 +1,16 @@
 import { validateRequest } from "@/auth";
 import prisma from "@/db";
 import { FollowerInfo } from "@/lib/types";
-
-// export async function GET(
-//   req: Request,
-//   context: { params: { userId: string } },
-// ) {
-//   const { userId } = context.params;
-
-//   try {
-//     const { user: loggedInUser } = await validateRequest();
+import { NextRequest } from "next/server";
 
 export async function GET(
-  req: Request,
-  { params: { userId } }: { params: { userId: string } },
+  req: NextRequest,
+  context: { params: Promise<{ userId: string }> },
 ) {
   try {
+    // Await the params to ensure they are properly resolved
+    const { userId } = await context.params;
     const { user: loggedInUser } = await validateRequest();
-
-    // export async function GET(
-    //   req: Request,
-    //   { params }: { params: Promise<{ userId: string }> },
-    // ) {
-    //   try {
-    //     const { user: loggedInUser } = await validateRequest();
 
     if (!loggedInUser) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -33,18 +20,10 @@ export async function GET(
       where: { id: userId },
       select: {
         followers: {
-          where: {
-            followerId: loggedInUser.id,
-          },
-          select: {
-            followerId: true,
-          },
+          where: { followerId: loggedInUser.id },
+          select: { followerId: true },
         },
-        _count: {
-          select: {
-            followers: true,
-          },
-        },
+        _count: { select: { followers: true } },
       },
     });
 
@@ -65,11 +44,11 @@ export async function GET(
 }
 
 export async function POST(
-  req: Request,
-  context: { params: { userId: string } },
+  req: NextRequest,
+  context: { params: Promise<{ userId: string }> },
 ) {
   // const { params } = await context;
-  const { userId } = context.params;
+  const { userId } = await context.params;
 
   try {
     const { user: loggedInUser } = await validateRequest();
@@ -86,10 +65,7 @@ export async function POST(
             followingId: userId,
           },
         },
-        create: {
-          followerId: loggedInUser.id,
-          followingId: userId,
-        },
+        create: { followerId: loggedInUser.id, followingId: userId },
         update: {},
       }),
     ]);
@@ -103,11 +79,10 @@ export async function POST(
 }
 
 export async function DELETE(
-  req: Request,
-  context: { params: { userId: string } },
+  req: NextRequest,
+  context: { params: Promise<{ userId: string }> },
 ) {
-  // const { params } = await context;
-  const { userId } = context.params;
+  const { userId } = await context.params;
 
   try {
     const { user: loggedInUser } = await validateRequest();
@@ -118,10 +93,7 @@ export async function DELETE(
 
     await prisma.$transaction([
       prisma.follow.deleteMany({
-        where: {
-          followerId: loggedInUser.id,
-          followingId: userId,
-        },
+        where: { followerId: loggedInUser.id, followingId: userId },
       }),
     ]);
 

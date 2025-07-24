@@ -5,7 +5,9 @@ import { hash } from "@node-rs/argon2";
 import prisma from "@/db";
 import { lucia } from "@/auth";
 import { redirect } from "next/navigation";
-import { isRedirectError } from "next/dist/client/components/redirect";
+// import {isRedirectError} from "next/dist/client/components/redirect";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
+
 import { cookies } from "next/headers";
 import { generateIdFromEntropySize } from "lucia";
 

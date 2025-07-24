@@ -1,13 +1,21 @@
-import { NextRequest } from "next/server";
-import prisma from "@/db";
 import { validateRequest } from "@/auth";
+import prisma from "@/db";
 import { getPostDataInclude, PostsPage } from "@/lib/types";
+import { NextRequest } from "next/server";
 
 export async function GET(req: NextRequest) {
   try {
+    const q = req.nextUrl.searchParams.get("q") || "";
     const cursor = req.nextUrl.searchParams.get("cursor") || undefined;
 
-    const pageSize = 10; //fetch pageSize posts
+    const searchQuery = q.trim();
+
+    if (!searchQuery) {
+      return Response.json(
+        { error: "Search query is required" },
+        { status: 400 },
+      );
+    }
 
     const { user } = await validateRequest();
 
@@ -15,28 +23,19 @@ export async function GET(req: NextRequest) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const pageSize = 10;
+
     const posts = await prisma.post.findMany({
-      where: {
-        user: {
-          followers: {
-            some: {
-              followerId: user.id,
-            },
-          },
-        },
-      },
+      where: { content: { contains: searchQuery, mode: "insensitive" } },
+      include: getPostDataInclude(user.id),
       orderBy: { createdAt: "desc" },
       take: pageSize + 1,
       cursor: cursor ? { id: cursor } : undefined,
-      include: getPostDataInclude(user.id),
     });
 
     const nextCursor = posts.length > pageSize ? posts[pageSize].id : null;
 
-    const data: PostsPage = {
-      posts: posts.slice(0, pageSize),
-      nextCursor,
-    };
+    const data: PostsPage = { posts: posts.slice(0, pageSize), nextCursor };
 
     return Response.json(data);
   } catch (error) {
