@@ -15,6 +15,7 @@ import { ImageIcon, Loader2, X } from "lucide-react";
 import { ref } from "process";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { useDropzone } from "@uploadthing/react";
 
 export default function PostEditor() {
   const { user } = useSession();
@@ -28,6 +29,12 @@ export default function PostEditor() {
     uploadProgress,
     reset: resetMediaUploads,
   } = useMediaUpload();
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: startUpload,
+  });
+
+  const { onClick, ...rootProps } = getRootProps();
 
   const editor = useEditor(
     {
@@ -88,14 +95,38 @@ export default function PostEditor() {
     );
   }
 
+  function onPaste(event: React.ClipboardEvent<HTMLDivElement>) {
+    const files = Array.from(event.clipboardData.items)
+      .filter((item) => item.kind === "file")
+      .map((item) => item.getAsFile())
+      .filter(Boolean) as File[];
+    if (files.length > 0) {
+      event.preventDefault();
+      startUpload(files);
+    }
+  }
+
   return (
     <div className="p- flex flex-col gap-5 rounded-2xl bg-card p-5 shadow-sm">
       <div className="flex gap-5">
         <UserAvatar avatarUrl={user.avatarUrl} className="hidden sm:inline" />
-        <EditorContent
-          editor={editor}
-          className="pv-3 max-h-[20rem] w-full overflow-y-auto rounded-2xl bg-zinc-100 px-5 text-gray-800"
-        />
+        <div {...rootProps} className="w-full">
+          <EditorContent
+            editor={editor}
+            onPaste={onPaste}
+            className={cn(
+              "pv-3 max-h-[20rem] w-full overflow-y-auto rounded-2xl bg-zinc-100 px-5 text-gray-800",
+              isDragActive && "border-primary outline-dashed",
+            )}
+          />
+          <input
+            {...getInputProps()}
+            className="sr-only"
+            type="file"
+            accept="image/*, video/*"
+            multiple
+          />
+        </div>
       </div>
       {!!attachments.length && (
         <AttachmentPreviews
