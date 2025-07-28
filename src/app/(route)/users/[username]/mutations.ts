@@ -39,10 +39,24 @@ export function useUpdateProfileMutation() {
             throw new Error("Avatar upload failed - no result returned");
           }
 
-          // Return updated user with new avatar URL
+          const uploadData = uploadResult[0];
+          console.log("Upload data:", uploadData);
+          console.log("Upload serverData:", uploadData.serverData);
+
+          const newAvatarUrl = uploadData.serverData?.avatarUrl;
+          console.log("New avatar URL from upload:", newAvatarUrl);
+
+          if (!newAvatarUrl) {
+            throw new Error("Avatar URL not returned from upload");
+          }
+
+          // Return updated user with new avatar URL from UploadThing response
           return {
-            updatedUser: { ...updatedUser, avatarUrl: uploadResult[0].url },
-            avatarUrl: uploadResult[0].url,
+            updatedUser: {
+              ...updatedUser,
+              avatarUrl: newAvatarUrl,
+            },
+            avatarUrl: newAvatarUrl,
           };
         } catch (uploadError) {
           console.error("Avatar upload failed:", uploadError);
@@ -61,6 +75,13 @@ export function useUpdateProfileMutation() {
     onSuccess: async ({ updatedUser, avatarUrl }) => {
       console.log("Profile update successful:", { updatedUser, avatarUrl });
 
+      // Use the updated user data with the new avatar URL
+      const finalUserData = avatarUrl
+        ? { ...updatedUser, avatarUrl }
+        : updatedUser;
+
+      console.log("Final user data for cache update:", finalUserData);
+
       // Cancel any ongoing queries
       const postFeedFilter: QueryFilters = { queryKey: ["post-feed"] };
       const userDataFilter: QueryFilters = { queryKey: ["user-data"] };
@@ -78,35 +99,48 @@ export function useUpdateProfileMutation() {
         (oldData) => {
           if (!oldData) return;
 
-          return {
+          console.log("Updating post feed cache with user:", finalUserData);
+
+          const updatedData = {
             pageParams: oldData.pageParams,
             pages: oldData.pages.map((page) => ({
               nextCursor: page.nextCursor,
               posts: page.posts.map((post) => {
-                if (post.user.id === updatedUser.id) {
+                if (post.user.id === finalUserData.id) {
+                  console.log(
+                    "Updating post user from:",
+                    post.user.avatarUrl,
+                    "to:",
+                    finalUserData.avatarUrl,
+                  );
                   return {
                     ...post,
-                    user: {
-                      ...updatedUser,
-                      avatarUrl: avatarUrl || updatedUser.avatarUrl,
-                    },
+                    user: finalUserData,
                   };
                 }
                 return post;
               }),
             })),
           };
+
+          console.log("Post feed cache updated");
+          return updatedData;
         },
       );
 
       // Invalidate user-specific data to refetch fresh data
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["user-data", updatedUser.username],
+          queryKey: ["user-data", finalUserData.username],
         }),
         queryClient.invalidateQueries({
-          queryKey: ["follower-info", updatedUser.id],
+          queryKey: ["follower-info", finalUserData.id],
         }),
+        // Also update user data cache directly for immediate UI updates
+        queryClient.setQueryData(
+          ["user-data", finalUserData.username],
+          finalUserData,
+        ),
       ]);
 
       router.refresh();

@@ -16,38 +16,64 @@ export const fileRouter = {
       return { user };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      const oldAvatarUrl = metadata.user.avatarUrl;
+      try {
+        console.log("Avatar upload complete, processing...", {
+          userId: metadata.user.id,
+          fileUrl: file.ufsUrl,
+          fileName: file.name,
+          fileSize: file.size,
+        });
 
-      if (oldAvatarUrl) {
-        try {
-          // Extract the file key from the old URL for deletion
-          const urlParts = oldAvatarUrl.split("/");
-          const key = urlParts[urlParts.length - 1];
+        const oldAvatarUrl = metadata.user.avatarUrl;
 
-          if (key && key.length > 0) {
-            await new UTApi().deleteFiles([key]);
+        if (oldAvatarUrl) {
+          try {
+            // Extract the file key from the old URL for deletion
+            const urlParts = oldAvatarUrl.split("/");
+            const key = urlParts[urlParts.length - 1];
+
+            if (key && key.length > 0) {
+              console.log(`Deleting old avatar with key: ${key}`);
+              await new UTApi().deleteFiles([key]);
+              console.log("Old avatar deleted successfully");
+            }
+          } catch (error) {
+            console.error("Failed to delete old avatar:", error);
+            // Continue with upload - don't fail the entire process
           }
-        } catch (error) {
-          console.error("Failed to delete old avatar:", error);
-          // Continue with upload - don't fail the entire process
         }
-      }
 
-      // Use the original UploadThing URL without transformation
-      const avatarUrl = file.url;
+        // Use the correct UploadThing URL property
+        const avatarUrl = file.ufsUrl;
+        console.log("Updating user avatar URL:", avatarUrl);
 
-      await Promise.all([
-        prisma.user.update({
+        // Update user in database
+        await prisma.user.update({
           where: { id: metadata.user.id },
           data: { avatarUrl: avatarUrl },
-        }),
-        streamServerClient.partialUpdateUser({
-          id: metadata.user.id,
-          set: { image: avatarUrl },
-        }),
-      ]);
+        });
 
-      return { avatarUrl: avatarUrl };
+        // Try to update Stream user, but don't fail if it doesn't work
+        try {
+          await streamServerClient.partialUpdateUser({
+            id: metadata.user.id,
+            set: { image: avatarUrl },
+          });
+          console.log("Stream user avatar updated successfully");
+        } catch (streamError) {
+          console.error(
+            "Failed to update Stream user avatar (non-critical):",
+            streamError,
+          );
+          // Don't throw here - the main avatar update was successful
+        }
+
+        console.log("Avatar update completed successfully");
+        return { avatarUrl: avatarUrl };
+      } catch (error) {
+        console.error("Critical error in avatar upload:", error);
+        throw new UploadThingError("Failed to process avatar upload");
+      }
     }),
 
   attachment: f({
@@ -64,7 +90,7 @@ export const fileRouter = {
     .onUploadComplete(async ({ file }) => {
       const media = await prisma.media.create({
         data: {
-          url: file.ufsUrl,
+          url: file.ufsUrl, // Use ufsUrl instead of deprecated file.url
           type: file.type.startsWith("image") ? "IMAGE" : "VIDEO",
         },
       });

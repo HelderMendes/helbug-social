@@ -1,3 +1,5 @@
+"use client";
+
 import { PostData } from "@/lib/types";
 import Link from "next/link";
 import UserAvatar from "../UserAvatar";
@@ -8,6 +10,7 @@ import Linkify from "../Linkify";
 import UserTooltip from "../UserTooltip";
 import Image from "next/image";
 import { Media } from "@prisma/client";
+import LikeButton from "./LikeButton";
 
 interface PostProps {
   post: PostData;
@@ -42,6 +45,16 @@ export default function Post({ post }: PostProps) {
               {formatRelativeDate(post.createdAt)}
             </Link>
           </div>
+        </div>
+        <div className="flex items-center gap-2 text-left">
+          <LikeButton
+            postId={post.id}
+            initialState={{
+              likes: post._count.likes,
+              isLikedByUser: post.likes.some((like) => like.userId === user.id),
+            }}
+            isOwnPost={post.user.id === user.id}
+          />
         </div>
         {post.user.id === user.id && (
           <PostMoreButton
@@ -92,6 +105,7 @@ function MediaPreview({ media }: MediaPreviewProps) {
         width={500}
         height={500}
         className="mx-auto size-fit max-h-[30rem] rounded-2xl"
+        priority
       />
     );
   }
