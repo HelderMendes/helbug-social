@@ -10,6 +10,7 @@ const nextConfig = {
         hostname: "uploadthing-prod.s3.us-west-2.amazonaws.com",
       },
       { protocol: "https", hostname: "*.ufs.sh" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
     ],
   },
   rewrites: () => {

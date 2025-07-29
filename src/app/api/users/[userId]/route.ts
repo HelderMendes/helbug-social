@@ -1,6 +1,6 @@
-import { validateRequest } from "@/src/auth";
-import prisma from "@/src/db";
-import { getUserDataSelect } from "@/src/lib/types";
+import { validateRequest } from "@/auth";
+import prisma from "@/db";
+import { getUserDataSelect } from "@/lib/types";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(

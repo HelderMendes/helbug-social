@@ -15,23 +15,24 @@ datasource db {
 }
 
 model User {
-  id                    String         @id
-  username              String         @unique
+  id                    String               @id
+  username              String               @unique
   displayName           String
-  email                 String?        @unique
+  email                 String?              @unique
   passwordHash          String?
-  googleId              String?        @unique
+  googleId              String?              @unique
   avatarUrl             String?
   bio                   String?
   sessions              Session[]
   posts                 Post[]
-  following             Follow[]       @relation("Following")
-  followers             Follow[]       @relation("Followers")
+  following             Follow[]             @relation("Following")
+  followers             Follow[]             @relation("Followers")
   likes                 Like[]
   bookmarks             Bookmark[]
   comments              Comment[]
-  receivedNotifications Notification[] @relation("Recipient")
-  issuedNotifications   Notification[] @relation("Issuer")
+  receivedNotifications Notification[]       @relation("Recipient")
+  issuedNotifications   Notification[]       @relation("Issuer")
+  passwordResetTokens   PasswordResetToken[]
 
   createdAt DateTime @default(now())
 
@@ -146,4 +147,16 @@ enum NotificationType {
   LIKE
   FOLLOW
   COMMENT
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  @@map("password_reset_tokens")
 }
