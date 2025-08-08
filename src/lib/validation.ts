@@ -51,3 +51,23 @@ export const resetPasswordSchema = z
   });
 
 export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
+
+// Utility function to convert username to display name
+export function generateDisplayName(username: string): string {
+  return (
+    username
+      // Replace underscores and hyphens with spaces
+      .replace(/[_-]/g, " ")
+      // Split into words and capitalize each word
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ")
+      // Clean up any double spaces
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+
+export const createCommentSchema = z.object({
+  content: requiredString.min(1, "Content is required"),
+});

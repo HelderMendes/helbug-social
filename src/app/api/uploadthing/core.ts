@@ -17,13 +17,6 @@ export const fileRouter = {
     })
     .onUploadComplete(async ({ metadata, file }) => {
       try {
-        console.log("Avatar upload complete, processing...", {
-          userId: metadata.user.id,
-          fileUrl: file.ufsUrl,
-          fileName: file.name,
-          fileSize: file.size,
-        });
-
         const oldAvatarUrl = metadata.user.avatarUrl;
 
         if (oldAvatarUrl) {
@@ -33,9 +26,7 @@ export const fileRouter = {
             const key = urlParts[urlParts.length - 1];
 
             if (key && key.length > 0) {
-              console.log(`Deleting old avatar with key: ${key}`);
               await new UTApi().deleteFiles([key]);
-              console.log("Old avatar deleted successfully");
             }
           } catch (error) {
             console.error("Failed to delete old avatar:", error);
@@ -45,13 +36,19 @@ export const fileRouter = {
 
         // Use the correct UploadThing URL property
         const avatarUrl = file.ufsUrl;
-        console.log("Updating user avatar URL:", avatarUrl);
 
-        // Update user in database
-        await prisma.user.update({
-          where: { id: metadata.user.id },
-          data: { avatarUrl: avatarUrl },
-        });
+        await Promise.all([
+          // Update user in database
+          await prisma.user.update({
+            where: { id: metadata.user.id },
+            data: { avatarUrl: avatarUrl },
+          }),
+          // Update Stream user avatar
+          streamServerClient.partialUpdateUser({
+            id: metadata.user.id,
+            set: { image: avatarUrl },
+          }),
+        ]);
 
         // Try to update Stream user, but don't fail if it doesn't work
         try {
@@ -59,7 +56,6 @@ export const fileRouter = {
             id: metadata.user.id,
             set: { image: avatarUrl },
           });
-          console.log("Stream user avatar updated successfully");
         } catch (streamError) {
           console.error(
             "Failed to update Stream user avatar (non-critical):",
@@ -68,7 +64,6 @@ export const fileRouter = {
           // Don't throw here - the main avatar update was successful
         }
 
-        console.log("Avatar update completed successfully");
         return { avatarUrl: avatarUrl };
       } catch (error) {
         console.error("Critical error in avatar upload:", error);
@@ -77,8 +72,8 @@ export const fileRouter = {
     }),
 
   attachment: f({
-    image: { maxFileSize: "4MB", maxFileCount: 5 },
-    video: { maxFileSize: "64MB", maxFileCount: 5 },
+    image: { maxFileSize: "8MB", maxFileCount: 5 },
+    video: { maxFileSize: "64MB", maxFileCount: 2 },
   })
     .middleware(async () => {
       const { user } = await validateRequest();

@@ -33,7 +33,7 @@ export default function UserTooltip({ user, children }: UserTooltipProps) {
       <Tooltip>
         <TooltipTrigger asChild>{children}</TooltipTrigger>
         <TooltipContent>
-          <div className="m,ax-w-80 py-2,,.5 md:mid-w-52 flex flex-col gap-3 break-words px-1">
+          <div className="md:mid-w-52 flex max-w-80 flex-col gap-3 break-words px-1 py-2.5">
             <div className="flex items-center justify-between gap-2">
               <Link href={`/users/${user.username}`}>
                 <UserAvatar size={70} avatarUrl={user.avatarUrl} />

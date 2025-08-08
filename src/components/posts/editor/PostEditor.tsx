@@ -12,7 +12,6 @@ import useMediaUpload from "./useMediaUpload";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ImageIcon, Loader2, X } from "lucide-react";
-import { ref } from "process";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useDropzone } from "@uploadthing/react";
@@ -39,7 +38,8 @@ export default function PostEditor() {
   const editor = useEditor(
     {
       extensions: [
-        StarterKit.configure({ bold: false, italic: false }),
+        // StarterKit.configure({ bold: false, italic: false, code: false }),
+        StarterKit.configure({ code: false }),
         Placeholder.configure({ placeholder: "What's in your mind?" }),
       ],
       editorProps: {
@@ -52,20 +52,7 @@ export default function PostEditor() {
       enablePasteRules: true,
 
       content: `
-          <h2>
-            Hi there,
-          </h2>
-          <p>
-            this is a basic <em>basic</em> example of <strong>Tiptap</strong>. Sure, there are all kind of basic text styles you’d probably expect from a text editor. But wait until you see the lists:
-          </p>
-          <p>
-            I know, I know, this is impressive. It’s only the tip of the iceberg though. Give it a try and click a little bit around. Don’t forget to check the other examples too.
-          </p>
-          <blockquote>
-            Wow, that’s amazing. Good work, boy! 👏
-            <br />
-            — Mom
-          </blockquote>
+            What's in your mind.  👏
         `,
     },
     [],
@@ -159,7 +146,7 @@ export default function PostEditor() {
   );
 }
 
-interface AddAttachmentsButtonPros {
+interface AddAttachmentsButtonProps {
   onFilesSelected: (files: File[]) => void;
   disabled: boolean;
 }
@@ -167,7 +154,7 @@ interface AddAttachmentsButtonPros {
 function AddAttachmentsButton({
   onFilesSelected,
   disabled,
-}: AddAttachmentsButtonPros) {
+}: AddAttachmentsButtonProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (

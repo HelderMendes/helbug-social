@@ -2,6 +2,7 @@ import { validateRequest } from "@/auth";
 import prisma from "@/db";
 import { FollowerInfo } from "@/lib/types";
 import { NextRequest } from "next/server";
+import { tuple } from "zod";
 
 export async function GET(
   req: NextRequest,
@@ -68,6 +69,13 @@ export async function POST(
         create: { followerId: loggedInUser.id, followingId: userId },
         update: {},
       }),
+      prisma.notification.create({
+        data: {
+          issuerId: loggedInUser.id,
+          recipientId: userId,
+          type: "FOLLOW",
+        },
+      }),
     ]);
 
     // return new Response();
@@ -95,11 +103,18 @@ export async function DELETE(
       prisma.follow.deleteMany({
         where: { followerId: loggedInUser.id, followingId: userId },
       }),
+      prisma.notification.deleteMany({
+        where: {
+          issuerId: loggedInUser.id,
+          recipientId: userId,
+          type: "FOLLOW",
+        },
+      }),
     ]);
 
     // return new Response();
     return Response.json(
-      { message: "Un followed successfully" },
+      { message: "Unfollowed successfully" },
       { status: 200 },
     );
   } catch (error) {

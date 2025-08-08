@@ -28,6 +28,7 @@ const LoginPage = () => {
           src={loginImage}
           alt="login image"
           className="hidden w-1/2 object-cover md:block"
+          priority
         />
       </div>
     </main>

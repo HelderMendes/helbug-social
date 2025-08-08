@@ -81,7 +81,8 @@ interface UserInfoSidebarProps {
 async function UserInfoSidebar({ user }: UserInfoSidebarProps) {
   const { user: loggedInUser } = await validateRequest();
 
-  // await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate loading delay
+  // Simulate loading delay
+  // await new Promise((resolve) => setTimeout(resolve, 2000));
 
   if (!loggedInUser) return null;
 

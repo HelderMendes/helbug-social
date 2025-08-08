@@ -29,9 +29,10 @@ async function WhoToFollow() {
 
   const usersToFollow = await prisma.user.findMany({
     where: {
-      NOT: {
-        id: user.id,
-      },
+      NOT: [
+        { id: user.id },
+        // { id: "vqoaoa37hh4eeppy" }, // Temporarily exclude António
+      ],
       followers: {
         none: {
           followerId: user.id,
@@ -39,41 +40,68 @@ async function WhoToFollow() {
       },
     },
     select: getUserDataSelect(user.id),
-    take: 6,
+    take: 6, // Reduced to 6 to test
+  });
+
+  // Filter out any invalid users
+  const validUsers = usersToFollow.filter((userToFollow, index) => {
+    return (
+      userToFollow &&
+      userToFollow.id &&
+      userToFollow.username &&
+      userToFollow.displayName
+    );
   });
 
   return (
     <div className="space-y-5 rounded-2xl bg-card p-5 shadow-sm">
       <div className="text-xl font-bold">Who to follow</div>
-      {usersToFollow.map((user) => (
-        <div key={user.id} className="flex items-center justify-between gap-3">
-          <UserTooltip user={user}>
-            <Link
-              href={`/users/${user.username}`}
-              className="flex items-center gap-3"
-            >
-              <UserAvatar avatarUrl={user.avatarUrl} className="flex-none" />
-              <div>
-                <p className="line-clamp-1 break-all font-semibold hover:underline">
-                  {user.displayName}
-                </p>
-                <p className="line-clamp-1 break-all text-muted-foreground">
-                  @{user.username}
-                </p>
+      {validUsers.length > 0 ? (
+        <>
+          {validUsers.map((userToFollow, index) => {
+            return (
+              <div
+                key={`user-${userToFollow.id}-${index}`}
+                className="flex items-center justify-between gap-3"
+                data-user-id={userToFollow.id}
+                data-index={index}
+              >
+                <UserTooltip user={userToFollow}>
+                  <Link
+                    href={`/users/${userToFollow.username}`}
+                    className="flex items-center gap-3"
+                  >
+                    <UserAvatar
+                      avatarUrl={userToFollow.avatarUrl}
+                      className="flex-none"
+                    />
+                    <div>
+                      <p className="line-clamp-1 break-all font-semibold hover:underline">
+                        {userToFollow.displayName}
+                      </p>
+                      <p className="line-clamp-1 break-all text-muted-foreground">
+                        @{userToFollow.username}
+                      </p>
+                    </div>
+                  </Link>
+                </UserTooltip>
+                <FollowButton
+                  userId={userToFollow.id}
+                  initialState={{
+                    followers: userToFollow._count.followers,
+                    isFollowedByUser: userToFollow.followers.some(
+                      ({ followerId }) => followerId === user.id,
+                    ),
+                  }}
+                  showFollowerCount={true}
+                />
               </div>
-            </Link>
-          </UserTooltip>
-          <FollowButton
-            userId={user.id}
-            initialState={{
-              followers: user._count.followers,
-              isFollowedByUser: user.followers.some(
-                ({ followerId }) => followerId === user.id,
-              ),
-            }}
-          />
-        </div>
-      ))}
+            );
+          })}
+        </>
+      ) : (
+        <p className="text-muted-foreground">No users to follow</p>
+      )}
     </div>
   );
 }
@@ -85,7 +113,7 @@ const getTrendingTopics = unstable_cache(
             FROM posts
             GROUP BY (hashtag)
             ORDER BY count DESC, hashtag ASC
-            LIMIT 10
+            LIMIT 6
         `;
 
     return result.map((row) => ({
@@ -117,7 +145,6 @@ async function TrendingTopics() {
               {hashtag}
             </p>
             <p className="text-sm text-muted-foreground">
-              {/* 2,3 millions is 2,3 min. and 100.000 is 100K */}
               {formatNumber(count)} {count === 1 ? " post" : " posts"}
             </p>
           </Link>

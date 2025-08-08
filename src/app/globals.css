@@ -2,12 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+@import "~stream-chat-react/dist/css/v2/index.css";
+
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
 /* Root Variables */
-
 @layer base {
   :root {
     --background: 0 0% 100%;

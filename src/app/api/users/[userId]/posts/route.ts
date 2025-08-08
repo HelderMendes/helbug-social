@@ -16,7 +16,7 @@ export async function GET(
     // //Test timeOut()
     // await new Promise((r) => setTimeout(r, 2000));
 
-    const pageSize = 5; //fetch pageSize posts
+    const pageSize = 10; //fetch pageSize posts
 
     const { user } = await validateRequest();
 

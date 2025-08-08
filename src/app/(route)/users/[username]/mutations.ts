@@ -31,20 +31,20 @@ export function useUpdateProfileMutation() {
       // Then handle avatar upload if provided
       if (avatar) {
         try {
-          console.log("Starting avatar upload...");
+          // console.log("Starting avatar upload...");
           const uploadResult = await startAvatarUpload([avatar]);
-          console.log("Avatar upload result:", uploadResult);
+          // console.log("Avatar upload result:", uploadResult);
 
           if (!uploadResult || uploadResult.length === 0 || !uploadResult[0]) {
             throw new Error("Avatar upload failed - no result returned");
           }
 
           const uploadData = uploadResult[0];
-          console.log("Upload data:", uploadData);
-          console.log("Upload serverData:", uploadData.serverData);
+          // console.log("Upload data:", uploadData);
+          // console.log("Upload serverData:", uploadData.serverData);
 
           const newAvatarUrl = uploadData.serverData?.avatarUrl;
-          console.log("New avatar URL from upload:", newAvatarUrl);
+          // console.log("New avatar URL from upload:", newAvatarUrl);
 
           if (!newAvatarUrl) {
             throw new Error("Avatar URL not returned from upload");
@@ -73,14 +73,14 @@ export function useUpdateProfileMutation() {
       return { updatedUser, avatarUrl: null };
     },
     onSuccess: async ({ updatedUser, avatarUrl }) => {
-      console.log("Profile update successful:", { updatedUser, avatarUrl });
+      // console.log("Profile update successful:", { updatedUser, avatarUrl });
 
       // Use the updated user data with the new avatar URL
       const finalUserData = avatarUrl
         ? { ...updatedUser, avatarUrl }
         : updatedUser;
 
-      console.log("Final user data for cache update:", finalUserData);
+      // console.log("Final user data for cache update:", finalUserData);
 
       // Cancel any ongoing queries
       const postFeedFilter: QueryFilters = { queryKey: ["post-feed"] };
@@ -99,7 +99,7 @@ export function useUpdateProfileMutation() {
         (oldData) => {
           if (!oldData) return;
 
-          console.log("Updating post feed cache with user:", finalUserData);
+          // console.log("Updating post feed cache with user:", finalUserData);
 
           const updatedData = {
             pageParams: oldData.pageParams,
@@ -107,12 +107,12 @@ export function useUpdateProfileMutation() {
               nextCursor: page.nextCursor,
               posts: page.posts.map((post) => {
                 if (post.user.id === finalUserData.id) {
-                  console.log(
-                    "Updating post user from:",
-                    post.user.avatarUrl,
-                    "to:",
-                    finalUserData.avatarUrl,
-                  );
+                  // console.log(
+                  //   "Updating post user from:",
+                  //   post.user.avatarUrl,
+                  //   "to:",
+                  //   finalUserData.avatarUrl,
+                  // );
                   return {
                     ...post,
                     user: finalUserData,
@@ -123,7 +123,7 @@ export function useUpdateProfileMutation() {
             })),
           };
 
-          console.log("Post feed cache updated");
+          // console.log("Post feed cache updated");
           return updatedData;
         },
       );

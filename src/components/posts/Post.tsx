@@ -11,6 +11,10 @@ import UserTooltip from "../UserTooltip";
 import Image from "next/image";
 import { Media } from "@prisma/client";
 import LikeButton from "./LikeButton";
+import BookmarkButton from "./BookmarkButton";
+import { useState } from "react";
+import { MessageSquare } from "lucide-react";
+import Comments from "../comments/Comments";
 
 interface PostProps {
   post: PostData;
@@ -18,6 +22,8 @@ interface PostProps {
 
 export default function Post({ post }: PostProps) {
   const { user } = useSession();
+
+  const [showComments, setShowComments] = useState(false);
 
   return (
     <article className="group/post space-y-3 rounded-2xl p-5 shadow-sm">
@@ -46,7 +52,7 @@ export default function Post({ post }: PostProps) {
             </Link>
           </div>
         </div>
-        <div className="flex items-center gap-2 text-left">
+        {/* <div className="flex items-center gap-2 text-left">
           <LikeButton
             postId={post.id}
             initialState={{
@@ -55,7 +61,7 @@ export default function Post({ post }: PostProps) {
             }}
             isOwnPost={post.user.id === user.id}
           />
-        </div>
+        </div> */}
         {post.user.id === user.id && (
           <PostMoreButton
             post={post}
@@ -69,6 +75,41 @@ export default function Post({ post }: PostProps) {
       {!!post.attachments.length && (
         <MediaPreviews attachments={post.attachments} />
       )}
+
+      <hr className="text-muted-foreground" />
+      <div className="flex justify-between gap-5">
+        <div className="flex items-center gap-6">
+          <CommentsButton
+            post={post}
+            onClick={() => setShowComments(!showComments)}
+          />
+          {/* {showComments && (
+            <Link
+            href={`/posts/${post.id}/comments`}
+            className="text-sm text-muted-foreground hover:underline"
+            >
+            View all comments
+            </Link>
+            )} */}
+          <LikeButton
+            postId={post.id}
+            initialState={{
+              likes: post._count.likes,
+              isLikedByUser: post.likes.some((like) => like.userId === user.id),
+            }}
+            isOwnPost={post.user.id === user.id}
+          />
+        </div>
+        <BookmarkButton
+          postId={post.id}
+          initialState={{
+            isBookmarkedByUser: post.bookmarks.some(
+              (bookmark) => bookmark.userId === user.id,
+            ),
+          }}
+        />
+      </div>
+      {showComments && <Comments post={post} />}
     </article>
   );
 }
@@ -123,4 +164,24 @@ function MediaPreview({ media }: MediaPreviewProps) {
   }
 
   return <p className="text-destructive">Unsupported media type</p>;
+}
+
+interface CommentsButtonProps {
+  post: PostData;
+  onClick: () => void;
+}
+
+function CommentsButton({ post, onClick }: CommentsButtonProps) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center text-sm text-muted-foreground hover:text-foreground"
+    >
+      <span className="flex gap-2 text-sm font-medium tabular-nums">
+        <MessageSquare className="size-5" />
+        {post._count.comments}{" "}
+        <span className="hidden sm:inline">comments</span>{" "}
+      </span>
+    </button>
+  );
 }

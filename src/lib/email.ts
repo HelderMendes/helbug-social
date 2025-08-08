@@ -15,7 +15,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
   const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/reset-password?token=${token}`;
 
   const mailOptions = {
-    from: process.env.EMAIL_FROM || "noreply@yourdomain.com",
+    from: process.env.EMAIL_FROM || "noreply@helbook.com",
     to: email,
     subject: "Reset Your Password - Helbook",
     html: `

@@ -19,12 +19,5 @@ export async function logout() {
     sessionCookie.attributes,
   );
 
-  // const cookieStore = await cookies();
-  // cookieStore.set(
-  //   sessionCookie.name,
-  //   sessionCookie.value,
-  //   sessionCookie.attributes,
-  // );
-
   return redirect("/login");
 }

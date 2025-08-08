@@ -1,5 +1,6 @@
 {
   "WillLuke.nextjs.addTypesOnSave": true,
   "WillLuke.nextjs.hasPrompted": true,
-  "cSpell.words": ["Linkify"]
+  "cSpell.words": ["Linkify"],
+  "tailwindCSS.experimental.classRegex": ["class:\\s*?[\"'`]([^\"'`]*).*?,"]
 }

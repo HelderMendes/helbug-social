@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 export async function DELETE() {
   try {
-    console.log("Starting cleanup process...");
+    // console.log("Starting cleanup process...");
 
     const unusedMedia = await prisma.media.findMany({
       where: {
@@ -13,7 +13,7 @@ export async function DELETE() {
       select: { id: true, url: true },
     });
 
-    console.log(`Found ${unusedMedia.length} unused media files`);
+    // console.log(`Found ${unusedMedia.length} unused media files`);
 
     if (unusedMedia.length === 0) {
       return NextResponse.json(
@@ -26,33 +26,33 @@ export async function DELETE() {
       .map((file) => {
         const parts = file.url.split("/");
         const key = parts[parts.length - 1];
-        console.log(`Extracting key from URL: ${file.url} -> ${key}`);
+        // console.log(`Extracting key from URL: ${file.url} -> ${key}`);
         return key;
       })
       .filter(Boolean);
 
-    console.log(
-      `Attempting to delete ${fileKeysToDelete.length} files from UploadThing:`,
-      fileKeysToDelete,
-    );
+    // console.log(
+    //   `Attempting to delete ${fileKeysToDelete.length} files from UploadThing:`,
+    //   fileKeysToDelete,
+    // );
 
     // Fix: Properly instantiate UTApi
     if (fileKeysToDelete.length > 0) {
       const utapi = new UTApi();
       const deleteResult = await utapi.deleteFiles(fileKeysToDelete);
-      console.log("UploadThing deletion result:", deleteResult);
+      // console.log("UploadThing deletion result:", deleteResult);
     }
 
-    console.log("Deleting media records from database...");
+    // console.log("Deleting media records from database...");
     const deleteResult = await prisma.media.deleteMany({
       where: {
         id: { in: unusedMedia.map((file) => file.id) },
       },
     });
 
-    console.log(
-      `Successfully deleted ${deleteResult.count} media records from database`,
-    );
+    // console.log(
+    //   `Successfully deleted ${deleteResult.count} media records from database`,
+    // );
 
     return NextResponse.json(
       {
