@@ -3,6 +3,7 @@ import { Lucia, Session, User } from "lucia";
 import { cookies } from "next/headers";
 import prisma from "./db";
 import { cache } from "react";
+import { Google } from "arctic";
 
 const adapter = new PrismaAdapter(prisma.session, prisma.user);
 
@@ -30,6 +31,12 @@ declare module "lucia" {
     DatabaseUserAttributes: DatabaseUserAttributes;
   }
 }
+
+export const google = new Google(
+  process.env.GOOGLE_CLIENT_ID!,
+  process.env.GOOGLE_CLIENT_SECRET!,
+  `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}api/auth/callback/google`,
+);
 
 interface DatabaseUserAttributes {
   id: string;

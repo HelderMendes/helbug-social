@@ -79,13 +79,13 @@ export default function LoginForm() {
       <div className="text-center">
         <Link
           href="/forgot-password"
-          className="text-sm text-blue-600 hover:underline"
+          className="text-sm text-white hover:underline"
         >
           Forgot your password?
         </Link>
       </div>
 
-      <div className="relative">
+      {/* <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t" />
         </div>
@@ -123,7 +123,7 @@ export default function LoginForm() {
           </svg>
           Continue with Google
         </LoadingButton>
-      </form>
+      </form> */}
     </Form>
   );
 }

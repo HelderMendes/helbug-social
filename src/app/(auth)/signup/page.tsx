@@ -1,8 +1,9 @@
 import { Metadata } from "next";
-import signUpImage from "@/assets/signup-image.jpg";
+import signUpImage from "@/assets/signup-img.jpg";
 import Image from "next/image";
 import Link from "next/link";
 import SignUpForm from "./SignUpForm";
+import GoogleSignupButton from "./GoogleSignupButton";
 
 export const metadata: Metadata = {
   title: "Sign Up",
@@ -21,6 +22,16 @@ export default function SignUpPage() {
             </p>
           </div>
           <div className="space-y-5">
+            <GoogleSignupButton />
+
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-muted" />
+              <span className="bg-background px-2 text-muted-foreground">
+                Or sign up with
+              </span>
+              <div className="h-px flex-1 bg-muted" />
+            </div>
+
             <SignUpForm />
             <Link href={"/login"} className="block text-center hover:underline">
               Already have an account? Log in

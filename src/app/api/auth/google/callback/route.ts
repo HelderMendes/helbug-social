@@ -4,6 +4,7 @@ import prisma from "@/db";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { generateIdFromEntropySize } from "lucia";
+import { slugify } from "@/lib/utils";
 
 interface GoogleUser {
   sub: string;
@@ -81,7 +82,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Generate username from email or name
-    let username = googleUser.email.split("@")[0].toLowerCase();
+    // let username=googleUser.email.split("@")[ 0 ].toLowerCase();
+    let username = slugify(googleUser.email.split("@")[0].toLowerCase());
 
     // Ensure username is unique
     let usernameExists = await prisma.user.findUnique({
