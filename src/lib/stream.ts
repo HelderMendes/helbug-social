@@ -1,6 +1,6 @@
 import { StreamChat } from "stream-chat";
 
-const streamServerClient = StreamChat.getInstance(
+const streamServerClient = new StreamChat(
   process.env.NEXT_PUBLIC_STREAM_KEY!,
   process.env.STREAM_SECRET,
 );

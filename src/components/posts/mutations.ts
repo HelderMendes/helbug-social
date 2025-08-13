@@ -38,6 +38,8 @@ export function useDeletePostMutation() {
         },
       );
       toast({
+        variant: "info",
+        title: "Post Deleted",
         description: "The post was deleted",
       });
       if (pathname === `/posts/${deletedPost.id}`) {
@@ -48,6 +50,7 @@ export function useDeletePostMutation() {
       console.error(error);
       toast({
         variant: "destructive",
+        title: "Unexpected failure!",
         description: "Failed to delete post. Please try again.",
       });
     },

@@ -16,6 +16,15 @@ export async function GET() {
       return new Response("Internal Server Error", { status: 500 });
     }
 
+    // First, upsert the user in Stream to ensure user_details are set
+    await streamServerClient.upsertUser({
+      id: user.id,
+      username: user.username || user.id, // Fallback to user.id if username is missing
+      name: user.displayName || user.username || `User ${user.id}`, // Fallback chain
+      image: user.avatarUrl || undefined,
+      role: "user", // Explicit role assignment
+    });
+
     const expirationTime = Math.floor(Date.now() / 1000) + 60 * 60; // 1 hour from now
     const issuedAt = Math.floor(Date.now() / 1000) - 60; // 1 minute ago
 

@@ -2,5 +2,16 @@
   "WillLuke.nextjs.addTypesOnSave": true,
   "WillLuke.nextjs.hasPrompted": true,
   "cSpell.words": ["Linkify"],
-  "tailwindCSS.experimental.classRegex": ["class:\\s*?[\"'`]([^\"'`]*).*?,"]
+  "tailwindCSS.experimental.classRegex": ["class:\\s*?[\"'`]([^\"'`]*).*?,"],
+  "editor.suggest.preview": true,
+  "files.autoGuessEncoding": true,
+  "screencastMode.fontSize": 20,
+  "editor.suggestFontSize": 14,
+  "editor.inlayHints.fontSize": 10,
+  "markdown.preview.fontSize": 12,
+  "quokka.fontSize": 12,
+  "tailwindCSS.rootFontSize": 12,
+  "editor.fontSize": 14,
+  "editor.codeLensFontSize": 10,
+  "extensions.supportNodeGlobalNavigator": true
 }

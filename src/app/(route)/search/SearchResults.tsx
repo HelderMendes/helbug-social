@@ -6,12 +6,16 @@ import PostsLoadingSkeleton from "@/components/posts/PostsLoadingSkeleton";
 import kyInstance from "@/lib/ky";
 import { PostsPage } from "@/lib/types";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import React from "react";
 
 interface SearchResultsProps {
   query: string;
 }
 
-export default function SearchResults({ query }: SearchResultsProps) {
+export default function SearchResults({
+  query,
+}: SearchResultsProps): JSX.Element {
   const {
     data,
     fetchNextPage,
@@ -23,7 +27,7 @@ export default function SearchResults({ query }: SearchResultsProps) {
     queryKey: ["post-feed", "search", query],
     queryFn: ({ pageParam }) =>
       kyInstance
-        .get("/api/posts/search", {
+        .get("/api/search", {
           searchParams: {
             q: query,
             ...(pageParam ? { cursor: pageParam } : {}),
@@ -32,27 +36,16 @@ export default function SearchResults({ query }: SearchResultsProps) {
         .json<PostsPage>(),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-    gcTime: 0,
   });
 
   const posts = data?.pages.flatMap((page) => page.posts) || [];
 
-  if (status === "pending") {
-    return <PostsLoadingSkeleton />;
-  }
+  if (status === "pending") return <PostsLoadingSkeleton />;
 
   if (status === "success" && !posts.length && !hasNextPage) {
     return (
       <p className="text-center text-muted-foreground">
-        No posts found for this search.
-      </p>
-    );
-  }
-
-  if (status === "error") {
-    return (
-      <p className="text-center text-destructive">
-        An error occurred while loading posts.
+        No results found for "{query}".
       </p>
     );
   }
@@ -65,7 +58,7 @@ export default function SearchResults({ query }: SearchResultsProps) {
       {posts.map((post) => (
         <Post key={post.id} post={post} />
       ))}
-      {isFetchingNextPage && <PostsLoadingSkeleton />}
+      {isFetchingNextPage && <Loader2 className="mx-auto my-3 animate-spin" />}
     </InfiniteScrollContainer>
   );
 }

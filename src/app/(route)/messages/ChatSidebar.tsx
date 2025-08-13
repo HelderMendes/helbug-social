@@ -58,7 +58,7 @@ export default function ChatSidebar({ open, onClose }: ChatSidebarProps) {
           type: "messaging",
           members: { $in: [user.id] },
         }}
-        showChannelSearch={true}
+        showChannelSearch
         options={{ state: true, presence: true, limit: 4 }}
         sort={{ last_message_at: -1 }}
         additionalChannelSearchProps={{

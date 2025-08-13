@@ -1,27 +1,39 @@
-import { validateRequest } from "@/auth";
 import TrendsSidebar from "@/components/TrendsSidebar";
-import { redirect } from "next/navigation";
+import { Metadata } from "next";
+import React from "react";
 import SearchResults from "./SearchResults";
 
-interface PageProps {
-  searchParams: Promise<{ q?: string }>;
+interface SearchPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function Page({ searchParams }: PageProps) {
+export async function generateMetadata({
+  searchParams,
+}: SearchPageProps): Promise<Metadata> {
   const { q } = await searchParams;
-  const { user } = await validateRequest();
+  const query = Array.isArray(q) ? q[0] : q;
+  return {
+    title: query ? `Search results for "${query}"` : "Search",
+    description: "Search for content across the platform",
+  };
+}
 
-  if (!user) redirect("/login");
+export default async function SearchPage({ searchParams }: SearchPageProps) {
+  const { q } = await searchParams;
+  const query = Array.isArray(q) ? q[0] : q;
 
   return (
     <main className="flex w-full min-w-0 gap-5">
-      <div className="w-full min-w-0 space-y-5">
+      <div className="w-full min-w-0 gap-5">
         <div className="rounded-2xl bg-card p-5 shadow-sm">
-          <h1 className="text-2xl font-bold">
-            {q ? `Search results for "${q}"` : "Search"}
+          <h1 className="line-clamp-2 break-all text-center text-2xl font-bold">
+            Search Results for {query ? `"${query}"` : "... search"}
           </h1>
+          <p className="text-ellipsis pt-3 text-center text-primary">
+            There are {query?.length} elements founded
+          </p>
         </div>
-        {q && <SearchResults query={q} />}
+        {query && <SearchResults query={query} />}
       </div>
       <TrendsSidebar />
     </main>
