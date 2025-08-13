@@ -90,7 +90,7 @@ export default function ForgotPasswordForm() {
         </div>
         <h3 className="text-lg font-medium">Check your email</h3>
         <p className="text-sm text-muted-foreground">
-          If an account with this email exists, we've sent you a password reset
+          If an account with this email exists, we&apos;ve sent you a password reset
           link.
         </p>
       </div>

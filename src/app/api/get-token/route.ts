@@ -36,7 +36,7 @@ export async function GET() {
 
     await streamServerClient.upsertUser(streamUser);
 
-    // console.log("User upserted successfully to Stream");
+    console.log("User upserted successfully to Stream");
 
     const expirationTime = Math.floor(Date.now() / 1000) + 60 * 60; // 1 hour from now
     const issuedAt = Math.floor(Date.now() / 1000) - 60; // 1 minute ago
@@ -46,6 +46,7 @@ export async function GET() {
       expirationTime,
       issuedAt,
     );
+
     // console.log("Generated token for user:", user.id);
     return new Response(JSON.stringify({ token }), {
       status: 200,

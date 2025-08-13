@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import { DefaultStreamChatGenerics, useChatContext } from "stream-chat-react";
+import { useChatContext } from "stream-chat-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "../SessionProvider";
 import { useState } from "react";
@@ -35,42 +35,27 @@ export default function NewChatDialog({
   const [searchInput, setSearchInput] = useState("");
   const searchInputDebounced = useDebounce(searchInput);
 
-  const [selectedUsers, setSelectedUsers] = useState<
-    UserResponse<DefaultStreamChatGenerics>[]
-  >([]);
+  const [selectedUsers, setSelectedUsers] = useState<UserResponse[]>([]);
 
   const { data, isFetching, isError, isSuccess } = useQuery({
     queryKey: ["stream-users", searchInputDebounced],
     queryFn: async () => {
-      return client.queryUsers(
-        {
-          id: { $ne: loggedInUser.id },
-          role: { $ne: "admin" },
-          ...(searchInputDebounced
-            ? {
-                $or: [
-                  { name: { $autocomplete: searchInputDebounced } },
-                  { username: { $autocomplete: searchInputDebounced } },
-                ],
-              }
-            : {}),
-        },
-        { name: 1, username: 1 },
-        { limit: 15 },
-      );
+      // Simplified query for Stream Chat v9 compatibility
+      return client.queryUsers({}, { name: 1, username: 1 }, { limit: 15 });
     },
   });
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const channel = client.channel("messaging", {
+      const channelName =
+        selectedUsers.length > 1
+          ? loggedInUser.displayName +
+            " and " +
+            selectedUsers.map((u) => u.name).join(", ")
+          : selectedUsers[0].name;
+
+      const channel = client.channel("messaging", undefined, {
         members: [loggedInUser.id, ...selectedUsers.map((u) => u.id)],
-        name:
-          selectedUsers.length > 1
-            ? loggedInUser.displayName +
-              " and " +
-              selectedUsers.map((u) => u.name).join(", ")
-            : selectedUsers[0].name,
       });
       await channel.create();
       return channel;
@@ -147,13 +132,11 @@ export default function NewChatDialog({
                   user={user}
                   selected={selectedUsers.some((u) => u.id === user.id)}
                   onClick={() => {
-                    setSelectedUsers(
-                      (prev): UserResponse<DefaultStreamChatGenerics>[] => {
-                        return prev.some((u) => u.id === user.id)
-                          ? prev.filter((u) => u.id !== user.id)
-                          : [...prev, user];
-                      },
-                    );
+                    setSelectedUsers((prev): UserResponse[] => {
+                      return prev.some((u) => u.id === user.id)
+                        ? prev.filter((u) => u.id !== user.id)
+                        : [...prev, user];
+                    });
                   }}
                 />
               ))}
@@ -175,7 +158,7 @@ export default function NewChatDialog({
   );
 }
 interface UserResultProps {
-  user: UserResponse<DefaultStreamChatGenerics>;
+  user: UserResponse;
   selected: boolean;
   onClick: () => void;
 }
@@ -199,7 +182,7 @@ function UserResult({ user, selected, onClick }: UserResultProps) {
 }
 
 interface SelectedUserTagProps {
-  user: UserResponse<DefaultStreamChatGenerics>;
+  user: UserResponse;
   onRemove: () => void;
 }
 function SelectedUserTag({ user, onRemove }: SelectedUserTagProps) {

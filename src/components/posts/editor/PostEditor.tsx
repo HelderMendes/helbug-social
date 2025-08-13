@@ -68,7 +68,7 @@ export default function PostEditor() {
     mutation.mutate(
       {
         content: input,
-        // mediaIds: [], // Empty array because I don't have yet media uploads
+        // mediaIds: [], // Empty array because I don&apos;t have yet media uploads
         mediaIds: attachments
           .map((attach) => attach.mediaId)
           .filter(Boolean) as string[],

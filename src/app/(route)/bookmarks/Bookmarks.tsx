@@ -35,7 +35,7 @@ export default function Bookmarks() {
   if (status === "success" && !posts.length && !hasNextPage) {
     return (
       <p className="text-center text-muted-foreground">
-        you haven't bookmarked yet...
+        you haven&apos;t bookmarked yet...
       </p>
     );
   }

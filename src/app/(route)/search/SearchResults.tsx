@@ -46,7 +46,7 @@ export default function SearchResults({
   if (status === "success" && !posts.length && !hasNextPage) {
     return (
       <p className="text-center text-muted-foreground">
-        No results found for "{query}".
+        No results found for &quot;{query}&quot;.
       </p>
     );
   }

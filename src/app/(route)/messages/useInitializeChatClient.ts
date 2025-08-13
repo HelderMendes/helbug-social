@@ -5,10 +5,11 @@ import kyInstance from "@/lib/ky";
 
 export default function useInitializeChatClient() {
   const { user } = useSession();
-  if (!user) return null;
   const [chatClient, setChatClient] = useState<StreamChat | null>(null);
 
   useEffect(() => {
+    if (!user) return;
+
     const client = new StreamChat(process.env.NEXT_PUBLIC_STREAM_KEY!);
 
     const connectUser = async () => {
@@ -62,7 +63,7 @@ export default function useInitializeChatClient() {
           console.log("Disconnected from Stream Chat _ Connection Closed"),
         );
     };
-  }, [user.id, user.username, user.displayName, user.avatarUrl]);
+  }, [user]);
 
-  return chatClient;
+  return user ? chatClient : null;
 }

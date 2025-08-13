@@ -4,9 +4,24 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import kyInstance from "@/lib/ky";
 import { Loader2 } from "lucide-react";
 
-export default function SearchSection({ query, type, renderItem }) {
+interface SearchSectionProps {
+  query: string;
+  type: string;
+  renderItem: (item: any) => React.ReactNode;
+}
+
+interface SearchResponse {
+  results: any[];
+  nextCursor: string | null;
+}
+
+export default function SearchSection({
+  query,
+  type,
+  renderItem,
+}: SearchSectionProps) {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } =
-    useInfiniteQuery({
+    useInfiniteQuery<SearchResponse>({
       queryKey: ["search", type, query],
       queryFn: ({ pageParam }) =>
         kyInstance
@@ -14,11 +29,10 @@ export default function SearchSection({ query, type, renderItem }) {
             searchParams: {
               q: query,
               type,
-              ...(pageParam ? { cursor: pageParam } : {}),
+              ...(pageParam ? { cursor: pageParam as string } : {}),
             },
           })
-
-          .json(),
+          .json<SearchResponse>(),
       initialPageParam: null as string | null,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
     });

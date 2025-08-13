@@ -1,5 +1,3 @@
-"user client";
-
 import { validateRequest } from "@/auth";
 import prisma from "@/db";
 import { getPostDataInclude, UserData } from "@/lib/types";
@@ -42,7 +40,7 @@ export async function generateMetadata({ params }: PageProps) {
   return { title: `${post.user.displayName}: ${post.content.slice(0, 50)}...` };
 }
 
-export async function Page({ params }: PageProps) {
+export default async function Page({ params }: PageProps) {
   const { postId } = await params;
   const { user } = await validateRequest();
 
@@ -71,8 +69,6 @@ export async function Page({ params }: PageProps) {
     </main>
   );
 }
-
-export default Page;
 
 interface UserInfoSidebarProps {
   user: UserData;

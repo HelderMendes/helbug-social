@@ -25,7 +25,7 @@ export default function useInitializeChatClient() {
             id: user.id,
             name: user.displayName,
             username: user.username,
-            image: user.avatarUrl,
+            image: user.avatarUrl || undefined,
           },
           token,
         );
@@ -60,7 +60,7 @@ export default function useInitializeChatClient() {
                 id: user.id,
                 name: user.displayName,
                 username: user.username,
-                image: user.avatarUrl,
+                image: user.avatarUrl || undefined,
               },
               token,
             );
