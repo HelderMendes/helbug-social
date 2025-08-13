@@ -13,6 +13,20 @@ export default function useInitializeChatClient() {
 
     const connectUser = async () => {
       try {
+        // console.log("Starting Stream Chat connection for user:", user.id);
+
+        // First, ensure the user exists in Stream
+        // console.log("Creating/updating Stream user...");
+        const userResponse = await kyInstance.post("/api/create-stream-user");
+        // console.log("Stream user creation response:", userResponse.status);
+
+        // Then get the token
+        const response = await kyInstance.get("/api/get-token");
+        const data = await response.json<{ token: string }>();
+
+        // console.log("Token received, connecting user...");
+
+        // Finally connect with the token
         await client.connectUser(
           {
             id: user.id,
@@ -20,15 +34,18 @@ export default function useInitializeChatClient() {
             name: user.displayName || user.username || `User ${user.id}`,
             image: user.avatarUrl || undefined,
           },
-          async () => {
-            const response = await kyInstance.get("/api/get-token");
-            const data = await response.json<{ token: string }>();
-            return data.token;
-          },
+          data.token,
         );
+
+        // console.log("Stream Chat connection successful");
         setChatClient(client);
       } catch (error) {
         console.error("Failed to connect to Stream Chat:", error);
+        // If it's a user_details error, let's try to retry after a short delay
+        if (error instanceof Error && error.message.includes("user_details")) {
+          console.log("Retrying connection after user_details error...");
+          setTimeout(() => connectUser(), 1000);
+        }
       }
     };
 

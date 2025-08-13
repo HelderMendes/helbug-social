@@ -36,6 +36,7 @@ export default function SearchResults({
         .json<PostsPage>(),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
+    gcTime: 0, // Garbage collection time of zero minutes
   });
 
   const posts = data?.pages.flatMap((page) => page.posts) || [];

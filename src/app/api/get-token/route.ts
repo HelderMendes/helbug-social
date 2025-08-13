@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const { user } = await validateRequest();
 
-    console.log("Calling get-token route for user:", user?.id);
+    // console.log("Calling get-token route for user:", user?.id);
 
     if (!user) return new Response("Unauthorized", { status: 401 });
 
@@ -16,14 +16,27 @@ export async function GET() {
       return new Response("Internal Server Error", { status: 500 });
     }
 
+    // console.log("User data for Stream upsert:", {
+    //   id: user.id,
+    //   username: user.username,
+    //   displayName: user.displayName,
+    //   avatarUrl: user.avatarUrl,
+    // });
+
     // First, upsert the user in Stream to ensure user_details are set
-    await streamServerClient.upsertUser({
+    const streamUser = {
       id: user.id,
       username: user.username || user.id, // Fallback to user.id if username is missing
       name: user.displayName || user.username || `User ${user.id}`, // Fallback chain
       image: user.avatarUrl || undefined,
       role: "user", // Explicit role assignment
-    });
+    };
+
+    // console.log("Upserting user to Stream:", streamUser);
+
+    await streamServerClient.upsertUser(streamUser);
+
+    // console.log("User upserted successfully to Stream");
 
     const expirationTime = Math.floor(Date.now() / 1000) + 60 * 60; // 1 hour from now
     const issuedAt = Math.floor(Date.now() / 1000) - 60; // 1 minute ago
@@ -33,7 +46,7 @@ export async function GET() {
       expirationTime,
       issuedAt,
     );
-    console.log("Generated token for user:", user.id);
+    // console.log("Generated token for user:", user.id);
     return new Response(JSON.stringify({ token }), {
       status: 200,
       headers: {
