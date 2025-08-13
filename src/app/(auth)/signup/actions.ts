@@ -9,7 +9,7 @@ import { hash } from "@node-rs/argon2";
 import prisma from "@/db";
 import { lucia } from "@/auth";
 import { redirect } from "next/navigation";
-// import {isRedirectError} from "next/dist/client/components/redirect";
+import { Prisma } from "@prisma/client";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 
 import { cookies } from "next/headers";
@@ -57,7 +57,7 @@ export async function signUp(
       };
     }
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.user.create({
         data: {
           id: userId,
