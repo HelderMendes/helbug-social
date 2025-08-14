@@ -1,6 +1,6 @@
 import { validateRequest } from "@/auth";
 import prisma from "@/db";
-import { getPostDataInclude, UserData } from "@/lib/types";
+import { getPostDataInclude, UserData, UserWithFollowers } from "@/lib/types";
 import { notFound } from "next/navigation";
 import { cache, Suspense } from "react";
 import Post from "@/components/posts/Post";
@@ -71,7 +71,9 @@ export default async function Page({ params }: PageProps) {
 }
 
 interface UserInfoSidebarProps {
-  user: UserData;
+  // user: UserData;
+  user: UserWithFollowers;
+  loggedInUser: { id: string };
 }
 
 async function UserInfoSidebar({ user }: UserInfoSidebarProps) {

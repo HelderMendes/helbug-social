@@ -26,6 +26,37 @@ export type UserData = Prisma.UserGetPayload<{
   select: ReturnType<typeof getUserDataSelect>;
 }>;
 
+// Add explicit type for follower data structure
+export interface FollowerData {
+  followerId: string;
+}
+
+// Add type for user with full followers list (for profile pages)
+export function getUserWithFollowersSelect(loggedInUserId: string) {
+  return {
+    id: true,
+    username: true,
+    displayName: true,
+    avatarUrl: true,
+    bio: true,
+    createdAt: true,
+    followers: {
+      select: { followerId: true },
+    },
+    _count: {
+      select: {
+        posts: true,
+        followers: true,
+        following: true,
+      },
+    },
+  } satisfies Prisma.UserSelect;
+}
+
+export type UserWithFollowers = Prisma.UserGetPayload<{
+  select: ReturnType<typeof getUserWithFollowersSelect>;
+}>;
+
 export function getPostDataInclude(loggedInUserId: string) {
   return {
     user: {
