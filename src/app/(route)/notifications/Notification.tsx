@@ -35,7 +35,8 @@ export default function Notification({
     },
   };
 
-  const { message, icon, href } = notificationTypeMap[notification.type];
+  const { message, icon, href } =
+    notificationTypeMap[notification.type as keyof typeof notificationTypeMap];
 
   return (
     <Link href={href} className="block">
