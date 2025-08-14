@@ -128,7 +128,7 @@ async function UserInfoSidebar({ user }: UserInfoSidebarProps) {
             initialState={{
               followers: user._count.followers,
               isFollowedByUser: user.followers.some(
-                (f) => f.followerId === loggedInUser.id,
+                (f: { followerId: string }) => f.followerId === loggedInUser.id,
               ),
             }}
           />
