@@ -71,3 +71,7 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// Add runtime configuration to prevent execution during build
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";

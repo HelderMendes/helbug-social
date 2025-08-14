@@ -23,7 +23,7 @@ export async function DELETE() {
     }
 
     const fileKeysToDelete = unusedMedia
-      .map((file) => {
+      .map((file: { id: string; url: string }) => {
         const parts = file.url.split("/");
         const key = parts[parts.length - 1];
         // console.log(`Extracting key from URL: ${file.url} -> ${key}`);
@@ -46,7 +46,9 @@ export async function DELETE() {
     // console.log("Deleting media records from database...");
     const deleteResult = await prisma.media.deleteMany({
       where: {
-        id: { in: unusedMedia.map((file) => file.id) },
+        id: {
+          in: unusedMedia.map((file: { id: string; url: string }) => file.id),
+        },
       },
     });
 

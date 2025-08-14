@@ -31,17 +31,18 @@ export async function GET(req: Request) {
 
     new UTApi().deleteFiles(
       unusedMedia.map(
-        (mediaFile) =>
+        (mediaFile: { url: string }) =>
           mediaFile.url.split(
             `/a/${process.env.NEXT_PUBLIC_UPLOADTHING_APP_ID}/`,
           )[1],
       ),
     );
-
     await prisma.media.deleteMany({
       where: {
         id: {
-          in: unusedMedia.map((mediaFile) => mediaFile.id),
+          in: unusedMedia.map(
+            (mediaFile: { id: string; url: string }) => mediaFile.id,
+          ),
         },
       },
     });

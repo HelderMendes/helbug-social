@@ -29,3 +29,7 @@ export async function GET() {
   });
   return Response.redirect(url.toString(), 302);
 }
+
+// Add runtime configuration to prevent execution during build
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";

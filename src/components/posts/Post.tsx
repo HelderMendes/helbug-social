@@ -9,7 +9,12 @@ import PostMoreButton from "./PostMoreButton";
 import Linkify from "../Linkify";
 import UserTooltip from "../UserTooltip";
 import Image from "next/image";
-import { Media } from "@prisma/client";
+// Define Media type locally to match your attachments structure
+type Media = {
+  id: string;
+  url: string;
+  type: "IMAGE" | "VIDEO";
+};
 import LikeButton from "./LikeButton";
 import BookmarkButton from "./BookmarkButton";
 import { useState } from "react";
@@ -63,7 +68,13 @@ export default function Post({ post }: PostProps) {
         <div className="whitespace-pre-line break-words">{post.content}</div>
       </Linkify>
       {!!post.attachments.length && (
-        <MediaPreviews attachments={post.attachments} />
+        <MediaPreviews
+          attachments={post.attachments.map((attachment) => ({
+            id: attachment.id,
+            url: attachment.url,
+            type: attachment.type === "IMAGE" ? "IMAGE" : "VIDEO",
+          }))}
+        />
       )}
 
       <hr className="text-muted-foreground" />
@@ -77,7 +88,9 @@ export default function Post({ post }: PostProps) {
             postId={post.id}
             initialState={{
               likes: post._count.likes,
-              isLikedByUser: post.likes.some((like) => like.userId === user.id),
+              isLikedByUser: post.likes.some(
+                (like: { userId: string }) => like.userId === user.id,
+              ),
             }}
             isOwnPost={post.user.id === user.id}
           />
@@ -86,7 +99,7 @@ export default function Post({ post }: PostProps) {
           postId={post.id}
           initialState={{
             isBookmarkedByUser: post.bookmarks.some(
-              (bookmark) => bookmark.userId === user.id,
+              (bookmark: { userId: string }) => bookmark.userId === user.id,
             ),
           }}
         />

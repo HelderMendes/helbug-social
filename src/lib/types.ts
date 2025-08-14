@@ -1,5 +1,3 @@
-import { Prisma } from "@prisma/client";
-
 export function getUserDataSelect(loggedInUserId: string) {
   return {
     id: true,
@@ -19,19 +17,28 @@ export function getUserDataSelect(loggedInUserId: string) {
         followers: true,
       },
     },
-  } satisfies Prisma.UserSelect;
+  };
 }
 
-export type UserData = Prisma.UserGetPayload<{
-  select: ReturnType<typeof getUserDataSelect>;
-}>;
+// Manual type definition instead of Prisma.UserGetPayload
+export type UserData = {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  createdAt: Date;
+  followers: { followerId: string }[];
+  _count: {
+    posts: number;
+    followers: number;
+  };
+};
 
-// Add explicit type for follower data structure
 export interface FollowerData {
   followerId: string;
 }
 
-// Add type for user with full followers list (for profile pages)
 export function getUserWithFollowersSelect(loggedInUserId: string) {
   return {
     id: true,
@@ -50,12 +57,23 @@ export function getUserWithFollowersSelect(loggedInUserId: string) {
         following: true,
       },
     },
-  } satisfies Prisma.UserSelect;
+  };
 }
 
-export type UserWithFollowers = Prisma.UserGetPayload<{
-  select: ReturnType<typeof getUserWithFollowersSelect>;
-}>;
+export type UserWithFollowers = {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  createdAt: Date;
+  followers: { followerId: string }[];
+  _count: {
+    posts: number;
+    followers: number;
+    following: number;
+  };
+};
 
 export function getPostDataInclude(loggedInUserId: string) {
   return {
@@ -77,12 +95,28 @@ export function getPostDataInclude(loggedInUserId: string) {
         comments: true,
       },
     },
-  } satisfies Prisma.PostInclude;
+  };
 }
 
-export type PostData = Prisma.PostGetPayload<{
-  include: ReturnType<typeof getPostDataInclude>;
-}>;
+export type PostData = {
+  id: string;
+  content: string;
+  createdAt: Date;
+  authorId: string;
+  user: UserData;
+  attachments: {
+    id: string;
+    url: string;
+    type: string;
+    postId: string | null;
+  }[];
+  likes: { userId: string }[];
+  bookmarks: { userId: string }[];
+  _count: {
+    likes: number;
+    comments: number;
+  };
+};
 
 export interface PostsPage {
   posts: PostData[];
@@ -94,12 +128,17 @@ export function getCommentDataInclude(loggedInUserId: string) {
     user: {
       select: getUserDataSelect(loggedInUserId),
     },
-  } satisfies Prisma.CommentInclude;
+  };
 }
 
-export type CommentData = Prisma.CommentGetPayload<{
-  include: ReturnType<typeof getCommentDataInclude>;
-}>;
+export type CommentData = {
+  id: string;
+  content: string;
+  createdAt: Date;
+  userId: string;
+  postId: string;
+  user: UserData;
+};
 
 export interface CommentsPage {
   comments: CommentData[];
@@ -119,11 +158,25 @@ export const notificationsInclude = {
       content: true,
     },
   },
-} satisfies Prisma.NotificationInclude;
+};
 
-export type NotificationData = Prisma.NotificationGetPayload<{
-  include: typeof notificationsInclude;
-}>;
+export type NotificationData = {
+  id: string;
+  type: "LIKE" | "FOLLOW" | "COMMENT";
+  createdAt: Date;
+  read: boolean;
+  issuerId: string;
+  recipientId: string;
+  postId: string | null;
+  issuer: {
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
+  post: {
+    content: string;
+  } | null;
+};
 
 export interface NotificationsPage {
   notifications: NotificationData[];

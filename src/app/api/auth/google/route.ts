@@ -31,3 +31,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.redirect(url);
 }
+
+// Add runtime configuration to prevent execution during build
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";

@@ -32,7 +32,9 @@ export async function GET(req: NextRequest) {
       bookmarks.length > pageSize ? bookmarks[pageSize].id : null;
 
     const data: PostsPage = {
-      posts: bookmarks.slice(0, pageSize).map((bookmark) => bookmark.post),
+      posts: bookmarks
+        .slice(0, pageSize)
+        .map((bookmark: (typeof bookmarks)[number]) => bookmark.post),
       nextCursor,
     };
 

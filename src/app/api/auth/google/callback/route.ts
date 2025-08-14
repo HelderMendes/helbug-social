@@ -14,27 +14,27 @@ interface GoogleUser {
 }
 
 export async function GET(request: NextRequest) {
-  const url = new URL(request.url);
-  const code = url.searchParams.get("code");
-  const state = url.searchParams.get("state");
-
-  const cookieStore = await cookies();
-  const storedState = cookieStore.get("google_oauth_state")?.value ?? null;
-  const codeVerifier = cookieStore.get("google_code_verifier")?.value ?? null;
-
-  if (
-    !code ||
-    !state ||
-    !storedState ||
-    state !== storedState ||
-    !codeVerifier
-  ) {
-    return NextResponse.redirect(
-      new URL("/login?error=oauth_error", request.url),
-    );
-  }
-
   try {
+    const url = new URL(request.url);
+    const code = url.searchParams.get("code");
+    const state = url.searchParams.get("state");
+
+    const cookieStore = await cookies();
+    const storedState = cookieStore.get("google_oauth_state")?.value ?? null;
+    const codeVerifier = cookieStore.get("google_code_verifier")?.value ?? null;
+
+    if (
+      !code ||
+      !state ||
+      !storedState ||
+      state !== storedState ||
+      !codeVerifier
+    ) {
+      return NextResponse.redirect(
+        new URL("/login?error=oauth_error", request.url),
+      );
+    }
+
     const tokens = await google.validateAuthorizationCode(code, codeVerifier);
     const googleUserResponse = await fetch(
       "https://openidconnect.googleapis.com/v1/userinfo",
@@ -82,7 +82,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Generate username from email or name
-    // let username=googleUser.email.split("@")[ 0 ].toLowerCase();
     let username = slugify(googleUser.email.split("@")[0].toLowerCase());
 
     // Ensure username is unique
@@ -92,7 +91,7 @@ export async function GET(request: NextRequest) {
 
     let counter = 1;
     while (usernameExists) {
-      username = `${googleUser.email.split("@")[0].toLowerCase()}${counter}`;
+      username = `${slugify(googleUser.email.split("@")[0].toLowerCase())}${counter}`;
       usernameExists = await prisma.user.findUnique({
         where: { username },
       });
@@ -128,3 +127,7 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// Add runtime configuration to prevent execution during build
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
