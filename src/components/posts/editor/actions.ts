@@ -4,7 +4,7 @@ import { validateRequest } from "@/auth";
 import prisma from "@/db";
 import { getPostDataInclude } from "@/lib/types";
 import { createPostSchema } from "@/lib/validation";
-// import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 
 export async function submitPost(input: {
   content: string;
@@ -15,16 +15,23 @@ export async function submitPost(input: {
 
   const { content, mediaIds } = createPostSchema.parse(input);
 
-  const newPost = await prisma.post.create({
-    data: {
-      content,
-      userId: user.id,
-      attachments: {
-        connect: mediaIds.map((id) => ({ id })),
-      },
+  const newPost = await prisma.$transaction(
+    async (tx: Prisma.TransactionClient) => {
+      const newPost = await tx.post.create({
+        data: {
+          content,
+          userId: user.id, // Fixed: changed from authorId to userId
+          attachments: {
+            connect: mediaIds.map((id) => ({ id })),
+          },
+        },
+        include: getPostDataInclude(user.id),
+      });
+
+      return newPost;
     },
-    include: getPostDataInclude(user.id),
-  });
+  );
+
   return newPost;
 
   // //Only makes sense when this runs in a server Comp and we want to refresh the server Comp

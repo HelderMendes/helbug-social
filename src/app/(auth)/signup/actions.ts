@@ -75,22 +75,6 @@ export async function signUp(
       });
     });
 
-    // await prisma.user.create({
-    //   data: {
-    //     id: userId,
-    //     username,
-    //     displayName: generateDisplayName(username),
-    //     email,
-    //     passwordHash,
-    //   },
-    // });
-
-    // await streamServerClient.upsertUser({
-    //   id: userId,
-    //   username,
-    //   name: username,
-    // });
-
     const session = await lucia.createSession(userId, {});
     const sessionCookie = lucia.createSessionCookie(session.id);
     (await cookies()).set(

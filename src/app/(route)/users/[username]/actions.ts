@@ -8,6 +8,7 @@ import {
   updateUserProfileSchema,
   UpdateUserProfileValues,
 } from "@/lib/validation";
+import { Prisma } from "@prisma/client";
 
 export async function updateUserProfile(values: UpdateUserProfileValues) {
   const validateValues = updateUserProfileSchema.parse(values);
@@ -16,20 +17,22 @@ export async function updateUserProfile(values: UpdateUserProfileValues) {
 
   if (!user) throw new Error("Unauthorized");
 
-  const updatedUser = await prisma.$transaction(async (tx) => {
-    const updatedUser = await tx.user.update({
-      where: { id: user.id },
-      data: validateValues,
-      select: getUserDataSelect(user.id),
-    });
-    await streamServerClient.partialUpdateUser({
-      id: user.id,
-      set: {
-        name: validateValues.displayName,
-      },
-    });
-    return updatedUser;
-  });
+  const updatedUser = await prisma.$transaction(
+    async (tx: Prisma.TransactionClient) => {
+      const updatedUser = await tx.user.update({
+        where: { id: user.id },
+        data: validateValues,
+        select: getUserDataSelect(user.id),
+      });
+      await streamServerClient.partialUpdateUser({
+        id: user.id,
+        set: {
+          name: validateValues.displayName,
+        },
+      });
+      return updatedUser;
+    },
+  );
 
   return updatedUser;
 }

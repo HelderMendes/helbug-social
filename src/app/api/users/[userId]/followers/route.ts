@@ -1,6 +1,7 @@
 import { validateRequest } from "@/auth";
 import prisma from "@/db";
 import { FollowerInfo } from "@/lib/types";
+import { Prisma } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { tuple } from "zod";
 
@@ -24,7 +25,9 @@ export async function GET(
           where: { followerId: loggedInUser.id },
           select: { followerId: true },
         },
-        _count: { select: { followers: true } },
+        _count: {
+          select: { followers: true },
+        },
       },
     });
 
@@ -58,26 +61,29 @@ export async function POST(
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await prisma.$transaction([
-      prisma.follow.upsert({
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.follow.upsert({
         where: {
           followerId_followingId: {
             followerId: loggedInUser.id,
             followingId: userId,
           },
         },
-        create: { followerId: loggedInUser.id, followingId: userId },
+        create: {
+          followerId: loggedInUser.id,
+          followingId: userId,
+        },
         update: {},
-      }),
-      prisma.notification.create({
+      });
+
+      await tx.notification.create({
         data: {
           issuerId: loggedInUser.id,
           recipientId: userId,
           type: "FOLLOW",
         },
-      }),
-    ]);
-
+      });
+    });
     // return new Response();
     return Response.json({ message: "Followed successfully" }, { status: 200 });
   } catch (error) {
