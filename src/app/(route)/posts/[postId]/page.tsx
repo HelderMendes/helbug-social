@@ -18,7 +18,21 @@ interface PageProps {
 const getPost = cache(async (postId: string, loggedInUserId: string) => {
   const post = await prisma.post.findUnique({
     where: { id: postId },
-    include: getPostDataInclude(loggedInUserId),
+    include: {
+      ...getPostDataInclude(loggedInUserId),
+      user: {
+        include: {
+          followers: true,
+          _count: {
+            select: {
+              posts: true,
+              followers: true,
+              following: true,
+            },
+          },
+        },
+      },
+    },
   });
 
   if (!post) notFound();
@@ -63,7 +77,7 @@ export default async function Page({ params }: PageProps) {
         <Suspense
           fallback={<Loader2 className="mx-auto size-5 animate-spin" />}
         >
-          <UserInfoSidebar user={post.user} />
+          <UserInfoSidebar user={post.user} loggedInUser={user} />
         </Suspense>
       </div>
     </main>
