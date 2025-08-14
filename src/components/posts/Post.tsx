@@ -52,16 +52,6 @@ export default function Post({ post }: PostProps) {
             </Link>
           </div>
         </div>
-        {/* <div className="flex items-center gap-2 text-left">
-          <LikeButton
-            postId={post.id}
-            initialState={{
-              likes: post._count.likes,
-              isLikedByUser: post.likes.some((like) => like.userId === user.id),
-            }}
-            isOwnPost={post.user.id === user.id}
-          />
-        </div> */}
         {post.user.id === user.id && (
           <PostMoreButton
             post={post}
@@ -83,14 +73,6 @@ export default function Post({ post }: PostProps) {
             post={post}
             onClick={() => setShowComments(!showComments)}
           />
-          {/* {showComments && (
-            <Link
-            href={`/posts/${post.id}/comments`}
-            className="text-sm text-muted-foreground hover:underline"
-            >
-            View all comments
-            </Link>
-            )} */}
           <LikeButton
             postId={post.id}
             initialState={{
