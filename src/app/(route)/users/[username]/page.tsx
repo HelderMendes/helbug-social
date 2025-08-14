@@ -82,7 +82,7 @@ async function UserProfile({ user, loggedInUserId }: UserProfileProps) {
   const followerInfo: FollowerInfo = {
     followers: user._count.followers,
     isFollowedByUser: user.followers.some(
-      ({ followerId }) => followerId === loggedInUserId,
+      ({ followerId }: { followerId: string }) => followerId === loggedInUserId,
     ),
   };
   return (
