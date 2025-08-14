@@ -1,7 +1,6 @@
 import UserAvatar from "@/components/UserAvatar";
 import { NotificationData } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import type { NotificationType } from "@prisma/client";
 
 import { Heart, MessageCircle, User2 } from "lucide-react";
 import Link from "next/link";
@@ -16,7 +15,7 @@ export default function Notification({
   notification: NotificationData;
 }) {
   const notificationTypeMap: Record<
-    NotificationType,
+    "LIKE" | "FOLLOW" | "COMMENT",
     { message: string; icon: JSX.Element; href: string }
   > = {
     FOLLOW: {
