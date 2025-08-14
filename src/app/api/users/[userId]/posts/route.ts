@@ -1,32 +1,50 @@
-import { validateRequest } from "@/auth";
-import prisma from "@/db";
-import { getPostDataInclude, PostsPage } from "@/lib/types";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+
+// Lazy import ALL dependencies to prevent build-time initialization
+async function getUserPostsDependencies() {
+  const [{ validateRequest }, { default: prisma }, { getPostDataInclude }] =
+    await Promise.all([
+      import("@/auth"),
+      import("@/db"),
+      import("@/lib/types"),
+    ]);
+
+  return { validateRequest, prisma, getPostDataInclude };
+}
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ userId: string }> },
+  { params }: { params: Promise<{ userId: string }> },
 ) {
   try {
-    // Await the params to ensure they are properly resolved
-    const { userId } = await context.params;
+    const { userId } = await params;
 
-    const cursor = req.nextUrl.searchParams.get("cursor") || undefined;
-
-    // //Test timeOut()
-    // await new Promise((r) => setTimeout(r, 2000));
-
-    const pageSize = 10; //fetch pageSize posts
-
-    const { user } = await validateRequest();
-
-    if (!user) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    // Ensure we're in runtime, not build time
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 },
+      );
     }
+
+    // Lazy load all dependencies
+    const { validateRequest, prisma, getPostDataInclude } =
+      await getUserPostsDependencies();
+
+    const { user: loggedInUser } = await validateRequest();
+
+    if (!loggedInUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const cursor = searchParams.get("cursor") || undefined;
+
+    const pageSize = 10;
 
     const posts = await prisma.post.findMany({
       where: { userId },
-      include: getPostDataInclude(user.id),
+      include: getPostDataInclude(loggedInUser.id),
       orderBy: { createdAt: "desc" },
       take: pageSize + 1,
       cursor: cursor ? { id: cursor } : undefined,
@@ -34,15 +52,22 @@ export async function GET(
 
     const nextCursor = posts.length > pageSize ? posts[pageSize].id : null;
 
-    const data: PostsPage = { posts: posts.slice(0, pageSize), nextCursor };
+    const data = {
+      posts: posts.length > pageSize ? posts.slice(0, -1) : posts,
+      nextCursor,
+    };
 
-    // return Response.json(data);
-    return new Response(JSON.stringify(data));
+    return NextResponse.json(data);
   } catch (error) {
-    console.error(error);
-    // return Response.json({ error: "Internal Server Error" }, { status: 500 });
-    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
-      status: 500,
-    });
+    console.error("Error fetching user posts:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
+
+// Add runtime configuration to prevent execution during build
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;

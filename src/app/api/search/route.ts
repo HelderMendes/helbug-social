@@ -1,190 +1,93 @@
 import { validateRequest } from "@/auth";
-import prisma from "@/db";
-import { getPostDataInclude, PostsPage } from "@/lib/types";
+import { getUserDataSelect } from "@/lib/types";
+import { NextRequest } from "next/server";
 
-export async function GET(req: Request) {
+// Lazy import prisma to prevent build-time initialization
+async function getPrisma() {
+  const { default: prisma } = await import("@/db");
+  return prisma;
+}
+
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const query = searchParams.get("q") || "";
-    const limitSearchItems = 10;
+    // Ensure we're in runtime, not build time
+    if (!process.env.DATABASE_URL) {
+      return Response.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 },
+      );
+    }
 
-    const cursor = searchParams.get("cursor") || undefined;
+    const q = req.nextUrl.searchParams.get("q") || "";
+    const type = req.nextUrl.searchParams.get("type") || "posts";
+
+    const searchQuery = q.trim();
+
+    if (!searchQuery) {
+      return Response.json(
+        { error: "Search query is required" },
+        { status: 400 },
+      );
+    }
 
     const { user } = await validateRequest();
 
     if (!user) {
-      return new Response("Unauthorized", { status: 401 });
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!query.trim()) {
-      return Response.json({ posts: [], nextCursor: null }, { status: 200 });
+    const prisma = await getPrisma();
+
+    if (type === "users") {
+      const users = await prisma.user.findMany({
+        where: {
+          OR: [
+            { username: { contains: searchQuery, mode: "insensitive" } },
+            { displayName: { contains: searchQuery, mode: "insensitive" } },
+          ],
+        },
+        select: getUserDataSelect(user.id),
+        take: 10,
+      });
+
+      return Response.json({ users });
     }
 
-    // For better search, split query into terms
-    const searchTerms = query.trim().split(/\s+/);
-
+    // Default to posts search
     const posts = await prisma.post.findMany({
-      where: {
-        OR: [
-          {
-            content: {
-              contains: query,
-              mode: "insensitive",
-            },
+      where: { content: { contains: searchQuery, mode: "insensitive" } },
+      include: {
+        user: {
+          select: getUserDataSelect(user.id),
+        },
+        attachments: true,
+        likes: {
+          where: { userId: user.id },
+          select: { userId: true },
+        },
+        bookmarks: {
+          where: { userId: user.id },
+          select: { userId: true },
+        },
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
           },
-          {
-            user: {
-              displayName: {
-                contains: query,
-                mode: "insensitive",
-              },
-            },
-          },
-          {
-            user: {
-              username: {
-                contains: query,
-                mode: "insensitive",
-              },
-            },
-          },
-          // {
-          //   comments: {
-          //     some: {
-          //       content: {
-          //         contains: query,
-          //         mode: "insensitive",
-          //       },
-          //     },
-          //   },
-          // },
-          // Additional: search for individual terms in content for better results
-          ...searchTerms.map((term) => ({
-            content: {
-              contains: term,
-              mode: "insensitive" as const,
-            },
-          })),
-          // Search for individual terms in user names
-          ...searchTerms.map((term) => ({
-            user: {
-              displayName: {
-                contains: term,
-                mode: "insensitive" as const,
-              },
-            },
-          })),
-          ...searchTerms.map((term) => ({
-            user: {
-              username: {
-                contains: term,
-                mode: "insensitive" as const,
-              },
-            },
-          })),
-          // ...searchTerms.map((term) => ({
-          //   comments: {
-          //     some: {
-          //       content: {
-          //         contains: term,
-          //         mode: "insensitive" as const,
-          //       },
-          //     },
-          //   },
-          // })),
-        ],
+        },
       },
-      include: getPostDataInclude(user.id),
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: limitSearchItems + 1,
-      ...(cursor && {
-        cursor: { id: cursor },
-        skip: 1,
-      }),
+      orderBy: { createdAt: "desc" },
+      take: 10,
     });
 
-    const nextCursor =
-      posts.length > limitSearchItems ? posts[limitSearchItems].id : null;
-
-    const data: PostsPage = {
-      posts: posts.slice(0, limitSearchItems),
-      nextCursor,
-    };
-
-    return Response.json(data, { status: 200 });
+    return Response.json({ posts });
   } catch (error) {
-    console.error("Error in GET /api/search:", error);
-    return new Response("Internal Server Error", { status: 500 });
+    console.error("Search error:", error);
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
-// export async function GET(req: Request) {
-//   try {
-//     const { searchParams } = new URL(req.url);
-//     const query = searchParams.get("q") || "";
-//     const type = searchParams.get("type") || "posts"; // posts, comments, users
-//     const cursor = searchParams.get("cursor") || undefined;
-//     const limit = 5;
-
-//     const { user } = await validateRequest();
-//     if (!user) return new Response("Unauthorized", { status: 401 });
-//     if (!query.trim()) return Response.json({ results: [], nextCursor: null });
-
-//     let results: any[] = [];
-//     let nextCursor: string | null = null;
-
-//     if (type === "posts") {
-//       const posts = await prisma.post.findMany({
-//         where: {
-//           content: { contains: query, mode: "insensitive" },
-//         },
-//         include: getPostDataInclude(user.id),
-//         orderBy: { createdAt: "desc" },
-//         take: limit + 1,
-//         ...(cursor && { cursor: { id: cursor }, skip: 1 }),
-//       });
-
-//       results = posts.slice(0, limit);
-//       nextCursor = posts.length > limit ? posts[limit].id : null;
-//     }
-
-//     if (type === "comments") {
-//       const comments = await prisma.comment.findMany({
-//         where: {
-//           content: { contains: query, mode: "insensitive" },
-//         },
-//         include: { user: true, post: true },
-//         orderBy: { createdAt: "desc" },
-//         take: limit + 1,
-//         ...(cursor && { cursor: { id: cursor }, skip: 1 }),
-//       });
-
-//       results = comments.slice(0, limit);
-//       nextCursor = comments.length > limit ? comments[limit].id : null;
-//     }
-
-//     if (type === "users") {
-//       const users = await prisma.user.findMany({
-//         where: {
-//           OR: [
-//             { displayName: { contains: query, mode: "insensitive" } },
-//             { username: { contains: query, mode: "insensitive" } },
-//           ],
-//         },
-//         orderBy: { createdAt: "desc" },
-//         take: limit + 1,
-//         ...(cursor && { cursor: { id: cursor }, skip: 1 }),
-//       });
-
-//       results = users.slice(0, limit);
-//       nextCursor = users.length > limit ? users[limit].id : null;
-//     }
-
-//     return Response.json({ results, nextCursor }, { status: 200 });
-//   } catch (error) {
-//     console.error("Error in GET /api/search:", error);
-//     return new Response("Internal Server Error", { status: 500 });
-//   }
-// }
+// Add runtime configuration to prevent execution during build
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;

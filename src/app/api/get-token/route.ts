@@ -1,42 +1,32 @@
-import { validateRequest } from "@/auth";
-import streamServerClient from "@/lib/stream";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
+// Lazy import ALL dependencies to prevent build-time initialization
+async function getTokenDependencies() {
+  const [{ validateRequest }, { default: streamServerClient }] =
+    await Promise.all([import("@/auth"), import("@/lib/stream")]);
+
+  return { validateRequest, streamServerClient };
+}
+
+export async function GET(req: NextRequest) {
   try {
-    const { user } = await validateRequest();
-
-    // console.log("Calling get-token route for user:", user?.id);
-
-    if (!user) return new Response("Unauthorized", { status: 401 });
-
-    if (!process.env.NEXT_PUBLIC_STREAM_KEY || !process.env.STREAM_SECRET) {
-      console.error(
-        "Stream API keys are not set in the environment variables.",
+    // Ensure we're in runtime, not build time
+    if (!process.env.STREAM_SECRET || !process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 },
       );
-      return new Response("Internal Server Error", { status: 500 });
     }
 
-    // console.log("User data for Stream upsert:", {
-    //   id: user.id,
-    //   username: user.username,
-    //   displayName: user.displayName,
-    //   avatarUrl: user.avatarUrl,
-    // });
+    // Lazy load all dependencies
+    const { validateRequest, streamServerClient } =
+      await getTokenDependencies();
 
-    // First, upsert the user in Stream to ensure user_details are set
-    const streamUser = {
-      id: user.id,
-      username: user.username || user.id, // Fallback to user.id if username is missing
-      name: user.displayName || user.username || `User ${user.id}`, // Fallback chain
-      image: user.avatarUrl || undefined,
-      role: "user", // Explicit role assignment
-    };
+    const { user } = await validateRequest();
 
-    // console.log("Upserting user to Stream:", streamUser);
-
-    await streamServerClient.upsertUser(streamUser);
-
-    console.log("User upserted successfully to Stream");
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const expirationTime = Math.floor(Date.now() / 1000) + 60 * 60; // 1 hour from now
     const issuedAt = Math.floor(Date.now() / 1000) - 60; // 1 minute ago
@@ -47,15 +37,17 @@ export async function GET() {
       issuedAt,
     );
 
-    // console.log("Generated token for user:", user.id);
-    return new Response(JSON.stringify({ token }), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    return NextResponse.json({ token });
   } catch (error) {
-    console.error("Error fetching token:", error);
-    return new Response("Internal Server Error", { status: 500 });
+    console.error("Error creating Stream token:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
+
+// Add runtime configuration to prevent execution during build
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;

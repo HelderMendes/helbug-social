@@ -1,3 +1,5 @@
+"use client";
+
 import { useToast } from "@/hooks/use-toast";
 import kyInstance from "@/lib/ky";
 import { BookmarkInfo } from "@/lib/types";

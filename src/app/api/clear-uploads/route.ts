@@ -1,35 +1,53 @@
-import prisma from "@/db";
-import { UTApi } from "uploadthing/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: Request) {
+// Lazy import ALL dependencies to prevent build-time initialization
+async function getUploadDependencies() {
+  const [{ validateRequest }, { default: prisma }, { UTApi }] =
+    await Promise.all([
+      import("@/auth"),
+      import("@/db"),
+      import("uploadthing/server"),
+    ]);
+
+  return { validateRequest, prisma, UTApi };
+}
+
+export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get("Authorization");
-
-    if (authHeader !== `Bearer ${process.env.CRON_JOB_SECRET}`) {
-      return Response.json(
-        { message: "Invalid authorization header" },
-        { status: 401 },
+    // Ensure we're in runtime, not build time
+    if (!process.env.DATABASE_URL || !process.env.UPLOADTHING_SECRET) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 },
       );
     }
 
+    // Lazy load all dependencies
+    const { validateRequest, prisma, UTApi } = await getUploadDependencies();
+
+    const { user } = await validateRequest();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get all media that are not attached to any post (older than 24 hours)
     const unusedMedia = await prisma.media.findMany({
       where: {
         postId: null,
-        ...(process.env.NODE_ENV === "production"
-          ? {
-              createdAt: {
-                lte: new Date(Date.now() - 1000 * 60 * 60 * 24),
-              },
-            }
-          : {}),
-      },
-      select: {
-        id: true,
-        url: true,
+        createdAt: {
+          lt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 24 hours ago
+        },
       },
     });
 
-    new UTApi().deleteFiles(
+    if (unusedMedia.length === 0) {
+      return NextResponse.json({ message: "No unused media found" });
+    }
+
+    // Delete from UploadThing
+    const utapi = new UTApi();
+    await utapi.deleteFiles(
       unusedMedia.map(
         (mediaFile: { url: string }) =>
           mediaFile.url.split(
@@ -37,22 +55,29 @@ export async function GET(req: Request) {
           )[1],
       ),
     );
+
+    // Delete from database
     await prisma.media.deleteMany({
       where: {
         id: {
-          in: unusedMedia.map(
-            (mediaFile: { id: string; url: string }) => mediaFile.id,
-          ),
+          in: unusedMedia.map((media: { id: string }) => media.id),
         },
       },
     });
 
-    return Response.json(
-      { message: "The unused file ware successful deleted! " },
-      { status: 200 },
-    );
+    return NextResponse.json({
+      message: `Deleted ${unusedMedia.length} unused media files`,
+    });
   } catch (error) {
-    console.error(error);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Error clearing uploads:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
+
+// Add runtime configuration to prevent execution during build
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;

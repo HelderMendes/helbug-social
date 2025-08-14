@@ -1,47 +1,52 @@
 // src/app/api/create-stream-user/route.ts
-import { validateRequest } from "@/auth";
-import streamServerClient from "@/lib/stream";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+
+// Lazy import ALL dependencies to prevent build-time initialization
+async function getStreamDependencies() {
+  const [{ validateRequest }, { default: streamServerClient }] =
+    await Promise.all([import("@/auth"), import("@/lib/stream")]);
+
+  return { validateRequest, streamServerClient };
+}
 
 export async function POST(req: NextRequest) {
   try {
+    // Ensure we're in runtime, not build time
+    if (!process.env.STREAM_SECRET || !process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 },
+      );
+    }
+
+    // Lazy load all dependencies
+    const { validateRequest, streamServerClient } =
+      await getStreamDependencies();
+
     const { user } = await validateRequest();
 
     if (!user) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // console.log(
-    //   "Creating Stream user for:",
-    //   user.id,
-    //   user.username,
-    //   user.displayName,
-    // );
-
-    // Create Stream user with fallbacks
-    const streamUserData = {
+    await streamServerClient.upsertUser({
       id: user.id,
-      name: user.displayName || user.username || `User ${user.id}`,
-      username: user.username || user.id,
+      username: user.username,
+      name: user.displayName,
       image: user.avatarUrl || undefined,
-      role: "user",
-    };
+    });
 
-    // console.log("Stream user data:", streamUserData);
-
-    const result = await streamServerClient.upsertUser(streamUserData);
-
-    // console.log("Stream user upserted successfully");
-
-    return Response.json({ success: true, user: result.users[user.id] });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error creating Stream user:", error);
-    return Response.json(
-      {
-        error: "Failed to create Stream user",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
+    return NextResponse.json(
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
 }
+
+// Add runtime configuration to prevent execution during build
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;

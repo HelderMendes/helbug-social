@@ -1,12 +1,32 @@
-import { validateRequest } from "@/auth";
-import prisma from "@/db";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function PATCH() {
+// Lazy import ALL dependencies to prevent build-time initialization
+async function getNotificationDependencies() {
+  const [{ validateRequest }, { default: prisma }] = await Promise.all([
+    import("@/auth"),
+    import("@/db"),
+  ]);
+
+  return { validateRequest, prisma };
+}
+
+export async function PATCH(req: NextRequest) {
   try {
+    // Ensure we're in runtime, not build time
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 },
+      );
+    }
+
+    // Lazy load all dependencies
+    const { validateRequest, prisma } = await getNotificationDependencies();
+
     const { user } = await validateRequest();
 
     if (!user) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await prisma.notification.updateMany({
@@ -14,16 +34,22 @@ export async function PATCH() {
         recipientId: user.id,
         read: false,
       },
-      data: { read: true },
+      data: {
+        read: true,
+      },
     });
 
-    // return new Response();
-    return new Response(
-      JSON.stringify({ message: "Notifications marked as read" }),
-      { status: 200 },
-    );
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(error);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Error marking notifications as read:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
+
+// Add runtime configuration to prevent execution during build
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;

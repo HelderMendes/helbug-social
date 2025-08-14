@@ -1,32 +1,67 @@
-import { validateRequest } from "@/auth";
-import prisma from "@/db";
-import { getUserDataSelect } from "@/lib/types";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+
+// Lazy import ALL dependencies to prevent build-time initialization
+async function getUsernameDependencies() {
+  const [{ validateRequest }, { default: prisma }, { getUserDataSelect }] =
+    await Promise.all([
+      import("@/auth"),
+      import("@/db"),
+      import("@/lib/types"),
+    ]);
+
+  return { validateRequest, prisma, getUserDataSelect };
+}
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ username: string }> },
+  { params }: { params: Promise<{ username: string }> },
 ) {
   try {
-    const { username } = await context.params;
+    const { username } = await params;
+
+    // Ensure we're in runtime, not build time
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 },
+      );
+    }
+
+    // Lazy load all dependencies
+    const { validateRequest, prisma, getUserDataSelect } =
+      await getUsernameDependencies();
+
     const { user: loggedInUser } = await validateRequest();
 
     if (!loggedInUser) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const user = await prisma.user.findFirst({
-      where: { username: { equals: username, mode: "insensitive" } },
+      where: {
+        username: {
+          equals: username,
+          mode: "insensitive",
+        },
+      },
       select: getUserDataSelect(loggedInUser.id),
     });
 
     if (!user) {
-      return Response.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return Response.json(user);
+    return NextResponse.json(user);
   } catch (error) {
-    console.error(error);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Error fetching user by username:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
+
+// Add runtime configuration to prevent execution during build
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;

@@ -20,7 +20,7 @@ export async function submitPost(input: {
       const newPost = await tx.post.create({
         data: {
           content,
-          userId: user.id, // Fixed: changed from authorId to userId
+          userId: user.id,
           attachments: {
             connect: mediaIds.map((id) => ({ id })),
           },

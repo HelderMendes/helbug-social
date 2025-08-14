@@ -1,10 +1,24 @@
-import { google } from "@/lib/oauth";
-import { lucia } from "@/auth";
-import prisma from "@/db";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { generateIdFromEntropySize } from "lucia";
-import { slugify } from "@/lib/utils";
+
+// Lazy import ALL dependencies to prevent build-time initialization
+async function getAuthDependencies() {
+  const [
+    { google },
+    { lucia },
+    { default: prisma },
+    { generateIdFromEntropySize },
+    { slugify },
+  ] = await Promise.all([
+    import("@/lib/oauth"),
+    import("@/auth"),
+    import("@/db"),
+    import("lucia"),
+    import("@/lib/utils"),
+  ]);
+
+  return { google, lucia, prisma, generateIdFromEntropySize, slugify };
+}
 
 interface GoogleUser {
   sub: string;
@@ -15,6 +29,17 @@ interface GoogleUser {
 
 export async function GET(request: NextRequest) {
   try {
+    // Ensure we're in runtime, not build time
+    if (
+      !process.env.GOOGLE_CLIENT_ID ||
+      !process.env.DATABASE_URL ||
+      !process.env.GOOGLE_CLIENT_SECRET
+    ) {
+      return NextResponse.redirect(
+        new URL("/login?error=oauth_error", request.url),
+      );
+    }
+
     const url = new URL(request.url);
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
@@ -34,6 +59,10 @@ export async function GET(request: NextRequest) {
         new URL("/login?error=oauth_error", request.url),
       );
     }
+
+    // Lazy load all dependencies
+    const { google, lucia, prisma, generateIdFromEntropySize, slugify } =
+      await getAuthDependencies();
 
     const tokens = await google.validateAuthorizationCode(code, codeVerifier);
     const googleUserResponse = await fetch(
@@ -131,3 +160,4 @@ export async function GET(request: NextRequest) {
 // Add runtime configuration to prevent execution during build
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;

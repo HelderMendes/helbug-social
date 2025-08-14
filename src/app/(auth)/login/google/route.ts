@@ -1,35 +1,50 @@
-import { google } from "@/auth";
+import { google } from "@/lib/oauth";
 import { generateCodeVerifier, generateState } from "arctic";
 import { cookies } from "next/headers";
 
 export async function GET() {
-  const state = generateState();
-  const codeVerifier = generateCodeVerifier();
-  const url = google.createAuthorizationURL(state, codeVerifier, [
-    "profile",
-    "email",
-    "openid",
-  ]);
+  try {
+    // Ensure we're in runtime, not build time
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      return Response.json(
+        { error: "OAuth service temporarily unavailable" },
+        { status: 503 },
+      );
+    }
 
-  const cookiesStore = await cookies();
+    const state = generateState();
+    const codeVerifier = generateCodeVerifier();
+    const url = await google.createAuthorizationURL(state, codeVerifier, [
+      "openid",
+      "profile",
+      "email",
+    ]);
 
-  cookiesStore.set("google_oauth_state", state, {
-    path: "/",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 5, // 5 minutes
-    sameSite: "lax", // cookie configuration
-  });
-  cookiesStore.set("google_code_verifier", codeVerifier, {
-    path: "/",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 5,
-    sameSite: "lax",
-  });
-  return Response.redirect(url.toString(), 302);
+    const cookieStore = await cookies();
+    cookieStore.set("google_oauth_state", state, {
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 60 * 10, // 10 minutes
+      sameSite: "lax",
+    });
+
+    cookieStore.set("google_code_verifier", codeVerifier, {
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 60 * 10, // 10 minutes
+      sameSite: "lax",
+    });
+
+    return Response.redirect(url);
+  } catch (error) {
+    console.error("Google OAuth initiation error:", error);
+    return Response.redirect("/login?error=oauth_error");
+  }
 }
 
 // Add runtime configuration to prevent execution during build
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;

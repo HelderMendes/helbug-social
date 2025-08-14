@@ -60,7 +60,7 @@ export async function POST(
 
     const post = await prisma.post.findUnique({
       where: { id: postId },
-      select: { authorId: true },
+      select: { id: true, userId: true }, // Include userId so it is available below
     });
 
     if (!post) {
@@ -79,11 +79,11 @@ export async function POST(
         update: {},
       });
 
-      if (post.authorId !== loggedInUser.id) {
+      if (post.userId !== loggedInUser.id) {
         await tx.notification.create({
           data: {
             issuerId: loggedInUser.id,
-            recipientId: post.authorId,
+            recipientId: post.userId,
             postId,
             type: "LIKE",
           },
@@ -113,7 +113,7 @@ export async function DELETE(
 
     const post = await prisma.post.findUnique({
       where: { id: postId },
-      select: { authorId: true },
+      select: { userId: true },
     });
 
     if (!post) {
@@ -128,7 +128,7 @@ export async function DELETE(
       await tx.notification.deleteMany({
         where: {
           issuerId: loggedInUser.id,
-          recipientId: post.authorId,
+          recipientId: post.userId,
           postId,
           type: "LIKE",
         },
@@ -141,3 +141,7 @@ export async function DELETE(
     return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+// Add runtime configuration to prevent execution during build
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";

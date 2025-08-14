@@ -102,7 +102,7 @@ export type PostData = {
   id: string;
   content: string;
   createdAt: Date;
-  authorId: string;
+  userId: string;
   user: UserData;
   attachments: {
     id: string;

@@ -1,17 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/db";
 import { generateIdFromEntropySize } from "lucia";
-import { sendPasswordResetEmail } from "@/lib/email";
 import { z } from "zod";
+
+// Lazy import prisma to prevent build-time initialization
+async function getPrisma() {
+  const { default: prisma } = await import("@/db");
+  return prisma;
+}
 
 const requestSchema = z.object({
   email: z.string().email("Invalid email address"),
 });
 
+// Lazy import for email function to prevent build-time execution
+async function sendResetEmail(email: string, token: string) {
+  try {
+    const { sendPasswordResetEmail } = await import("@/lib/email");
+    await sendPasswordResetEmail(email, token);
+  } catch (error) {
+    console.error("Failed to send reset email:", error);
+    // Don't throw to prevent enumeration
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // Ensure we're in runtime, not build time
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 },
+      );
+    }
+
     const body = await request.json();
     const { email } = requestSchema.parse(body);
+
+    // Get Prisma instance
+    const prisma = await getPrisma();
 
     // Find user by email
     const user = await prisma.user.findUnique({
@@ -51,13 +77,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Send email
-    try {
-      await sendPasswordResetEmail(email, token);
-    } catch (emailError) {
-      console.error("Failed to send reset email:", emailError);
-      // Don't reveal email sending failure to prevent enumeration
-    }
+    // Send email with lazy loading
+    await sendResetEmail(email, token);
 
     return NextResponse.json({
       message:
@@ -75,3 +96,4 @@ export async function POST(request: NextRequest) {
 // Add runtime configuration to prevent execution during build
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;

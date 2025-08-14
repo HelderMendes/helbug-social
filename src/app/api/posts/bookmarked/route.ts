@@ -44,3 +44,7 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+
+// Add runtime configuration to prevent execution during build
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";

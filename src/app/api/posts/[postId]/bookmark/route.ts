@@ -1,92 +1,159 @@
-import { validateRequest } from "@/auth";
-import prisma from "@/db";
-import { BookmarkInfo } from "@/lib/types";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+
+// Lazy import ALL dependencies to prevent build-time initialization
+async function getBookmarkDependencies() {
+  const [{ validateRequest }, { default: prisma }, { Prisma }] =
+    await Promise.all([
+      import("@/auth"),
+      import("@/db"),
+      import("@prisma/client"),
+    ]);
+
+  return { validateRequest, prisma, Prisma };
+}
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ postId: string }> },
+  { params }: { params: Promise<{ postId: string }> },
 ) {
   try {
-    const { postId } = await context.params;
-    const { user: loggedInUser } = await validateRequest();
+    const { postId } = await params;
 
-    if (!loggedInUser) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    // Ensure we're in runtime, not build time
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 },
+      );
+    }
+
+    // Lazy load all dependencies
+    const { validateRequest, prisma } = await getBookmarkDependencies();
+
+    const { user } = await validateRequest();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const bookmark = await prisma.bookmark.findUnique({
-      where: { userId_postId: { userId: loggedInUser.id, postId } },
+      where: {
+        userId_postId: {
+          userId: user.id,
+          postId,
+        },
+      },
     });
 
-    const data: BookmarkInfo = {
-      isBookmarkedByUser: !!bookmark,
-    };
-
-    return Response.json(data);
+    return NextResponse.json({ isBookmarked: !!bookmark });
   } catch (error) {
-    console.error(error);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Error checking bookmark:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ postId: string }> },
+  { params }: { params: Promise<{ postId: string }> },
 ) {
-  const { postId } = await context.params;
   try {
-    const { user: loggedInUser } = await validateRequest();
+    const { postId } = await params;
 
-    if (!loggedInUser) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    // Ensure we're in runtime, not build time
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 },
+      );
     }
 
-    // Upsert the bookmark
-    // This will create a new bookmark if it doesn't exist, or do nothing if it already exists
+    // Lazy load all dependencies
+    const { validateRequest, prisma } = await getBookmarkDependencies();
+
+    const { user } = await validateRequest();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const post = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { id: true },
+    });
+
+    if (!post) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
+
     await prisma.bookmark.upsert({
       where: {
         userId_postId: {
-          userId: loggedInUser.id,
+          userId: user.id,
           postId,
         },
       },
       create: {
-        userId: loggedInUser.id,
+        userId: user.id,
         postId,
       },
       update: {},
     });
 
-    return new Response();
+    return new NextResponse();
   } catch (error) {
-    console.error(error);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Error bookmarking post:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(
   req: NextRequest,
-  context: { params: Promise<{ postId: string }> },
+  { params }: { params: Promise<{ postId: string }> },
 ) {
-  const { postId } = await context.params;
   try {
-    const { user: loggedInUser } = await validateRequest();
+    const { postId } = await params;
 
-    if (!loggedInUser) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    // Ensure we're in runtime, not build time
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 },
+      );
+    }
+
+    // Lazy load all dependencies
+    const { validateRequest, prisma } = await getBookmarkDependencies();
+
+    const { user } = await validateRequest();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     await prisma.bookmark.deleteMany({
       where: {
-        userId: loggedInUser.id,
+        userId: user.id,
         postId,
       },
     });
 
-    return new Response();
+    return new NextResponse();
   } catch (error) {
-    console.error(error);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Error removing bookmark:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
+
+// Add runtime configuration to prevent execution during build
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;

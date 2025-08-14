@@ -1,130 +1,215 @@
-import { validateRequest } from "@/auth";
-import prisma from "@/db";
-import { FollowerInfo } from "@/lib/types";
-import { Prisma } from "@prisma/client";
-import { NextRequest } from "next/server";
-import { tuple } from "zod";
+import { NextRequest, NextResponse } from "next/server";
+
+// Lazy import ALL dependencies to prevent build-time initialization
+async function getFollowerDependencies() {
+  const [
+    { validateRequest },
+    { default: prisma },
+    { getUserDataSelect },
+    { Prisma },
+  ] = await Promise.all([
+    import("@/auth"),
+    import("@/db"),
+    import("@/lib/types"),
+    import("@prisma/client"),
+  ]);
+
+  return { validateRequest, prisma, getUserDataSelect, Prisma };
+}
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ userId: string }> },
+  { params }: { params: Promise<{ userId: string }> },
 ) {
   try {
-    // Await the params to ensure they are properly resolved
-    const { userId } = await context.params;
+    const { userId } = await params;
+
+    // Ensure we're in runtime, not build time
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 },
+      );
+    }
+
+    // Lazy load all dependencies
+    const { validateRequest, prisma, getUserDataSelect } =
+      await getFollowerDependencies();
+
     const { user: loggedInUser } = await validateRequest();
 
     if (!loggedInUser) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        followers: {
-          where: { followerId: loggedInUser.id },
-          select: { followerId: true },
-        },
-        _count: {
-          select: { followers: true },
+    const { searchParams } = new URL(req.url);
+    const cursor = searchParams.get("cursor") || undefined;
+
+    const pageSize = 10;
+
+    const followers = await prisma.follow.findMany({
+      where: { followingId: userId },
+      include: {
+        follower: {
+          select: getUserDataSelect(loggedInUser.id),
         },
       },
+      orderBy: { createdAt: "desc" },
+      take: pageSize + 1,
+      cursor: cursor ? { id: cursor } : undefined,
     });
 
-    if (!user) {
-      return Response.json({ error: "User not found" }, { status: 404 });
-    }
+    const nextCursor =
+      followers.length > pageSize ? followers[pageSize].id : null;
 
-    const data: FollowerInfo = {
-      followers: user._count.followers,
-      isFollowedByUser: !!user.followers.length,
+    const data = {
+      followers:
+        followers.length > pageSize
+          ? followers.slice(0, -1).map((follow) => follow.follower)
+          : followers.map((follow) => follow.follower),
+      nextCursor,
     };
 
-    return Response.json(data);
+    return NextResponse.json(data);
   } catch (error) {
-    console.error(error);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Error fetching followers:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ userId: string }> },
+  { params }: { params: Promise<{ userId: string }> },
 ) {
-  // const { params } = await context;
-  const { userId } = await context.params;
-
   try {
+    const { userId } = await params;
+
+    // Ensure we're in runtime, not build time
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 },
+      );
+    }
+
+    // Lazy load all dependencies
+    const { validateRequest, prisma, Prisma } = await getFollowerDependencies();
+
     const { user: loggedInUser } = await validateRequest();
 
     if (!loggedInUser) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      await tx.follow.upsert({
-        where: {
-          followerId_followingId: {
+    if (userId === loggedInUser.id) {
+      return NextResponse.json(
+        { error: "Cannot follow yourself" },
+        { status: 400 },
+      );
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    await prisma.$transaction(
+      async (tx: InstanceType<typeof Prisma.TransactionClient>) => {
+        await tx.follow.upsert({
+          where: {
+            followerId_followingId: {
+              followerId: loggedInUser.id,
+              followingId: userId,
+            },
+          },
+          create: {
             followerId: loggedInUser.id,
             followingId: userId,
           },
-        },
-        create: {
-          followerId: loggedInUser.id,
-          followingId: userId,
-        },
-        update: {},
-      });
+          update: {},
+        });
 
-      await tx.notification.create({
-        data: {
-          issuerId: loggedInUser.id,
-          recipientId: userId,
-          type: "FOLLOW",
-        },
-      });
-    });
-    // return new Response();
-    return Response.json({ message: "Followed successfully" }, { status: 200 });
+        await tx.notification.create({
+          data: {
+            issuerId: loggedInUser.id,
+            recipientId: userId,
+            type: "FOLLOW",
+          },
+        });
+      },
+    );
+
+    return new NextResponse();
   } catch (error) {
-    console.error(error);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Error following user:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(
   req: NextRequest,
-  context: { params: Promise<{ userId: string }> },
+  { params }: { params: Promise<{ userId: string }> },
 ) {
-  const { userId } = await context.params;
-
   try {
+    const { userId } = await params;
+
+    // Ensure we're in runtime, not build time
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Service temporarily unavailable" },
+        { status: 503 },
+      );
+    }
+
+    // Lazy load all dependencies
+    const { validateRequest, prisma, Prisma } = await getFollowerDependencies();
+
     const { user: loggedInUser } = await validateRequest();
 
     if (!loggedInUser) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await prisma.$transaction([
-      prisma.follow.deleteMany({
-        where: { followerId: loggedInUser.id, followingId: userId },
-      }),
-      prisma.notification.deleteMany({
-        where: {
-          issuerId: loggedInUser.id,
-          recipientId: userId,
-          type: "FOLLOW",
-        },
-      }),
-    ]);
+    await prisma.$transaction(
+      async (tx: InstanceType<typeof Prisma.TransactionClient>) => {
+        await tx.follow.deleteMany({
+          where: {
+            followerId: loggedInUser.id,
+            followingId: userId,
+          },
+        });
 
-    // return new Response();
-    return Response.json(
-      { message: "Unfollowed successfully" },
-      { status: 200 },
+        await tx.notification.deleteMany({
+          where: {
+            issuerId: loggedInUser.id,
+            recipientId: userId,
+            type: "FOLLOW",
+          },
+        });
+      },
     );
+
+    return new NextResponse();
   } catch (error) {
-    console.error(error);
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Error unfollowing user:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }
+
+// Add runtime configuration to prevent execution during build
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
