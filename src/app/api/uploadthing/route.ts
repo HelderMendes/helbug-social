@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 // Lazy import ALL dependencies to prevent build-time initialization
 async function getUploadThingDependencies() {
-  const [{ createRouteHandler }, { default: ourFileRouter }] =
-    await Promise.all([import("uploadthing/next"), import("./core")]);
+  const [{ createRouteHandler }, { ourFileRouter }] = await Promise.all([
+    import("uploadthing/next"),
+    import("./core"),
+  ]);
 
   return { createRouteHandler, ourFileRouter };
 }

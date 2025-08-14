@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 // Lazy import ALL dependencies to prevent build-time initialization
@@ -54,13 +55,21 @@ export async function GET(
           select: getUserDataSelect(loggedInUser.id),
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: {
+        follower: {
+          username: "asc",
+        },
+      },
       take: pageSize + 1,
-      cursor: cursor ? { id: cursor } : undefined,
+      cursor: cursor
+        ? {
+            followerId_followingId: { followerId: cursor, followingId: userId },
+          }
+        : undefined,
     });
 
     const nextCursor =
-      followers.length > pageSize ? followers[pageSize].id : null;
+      followers.length > pageSize ? followers[pageSize].followerId : null;
 
     const data = {
       followers:
@@ -120,31 +129,29 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    await prisma.$transaction(
-      async (tx: InstanceType<typeof Prisma.TransactionClient>) => {
-        await tx.follow.upsert({
-          where: {
-            followerId_followingId: {
-              followerId: loggedInUser.id,
-              followingId: userId,
-            },
-          },
-          create: {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.follow.upsert({
+        where: {
+          followerId_followingId: {
             followerId: loggedInUser.id,
             followingId: userId,
           },
-          update: {},
-        });
+        },
+        create: {
+          followerId: loggedInUser.id,
+          followingId: userId,
+        },
+        update: {},
+      });
 
-        await tx.notification.create({
-          data: {
-            issuerId: loggedInUser.id,
-            recipientId: userId,
-            type: "FOLLOW",
-          },
-        });
-      },
-    );
+      await tx.notification.create({
+        data: {
+          issuerId: loggedInUser.id,
+          recipientId: userId,
+          type: "FOLLOW",
+        },
+      });
+    });
 
     return new NextResponse();
   } catch (error) {
@@ -180,24 +187,22 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    await prisma.$transaction(
-      async (tx: InstanceType<typeof Prisma.TransactionClient>) => {
-        await tx.follow.deleteMany({
-          where: {
-            followerId: loggedInUser.id,
-            followingId: userId,
-          },
-        });
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.follow.deleteMany({
+        where: {
+          followerId: loggedInUser.id,
+          followingId: userId,
+        },
+      });
 
-        await tx.notification.deleteMany({
-          where: {
-            issuerId: loggedInUser.id,
-            recipientId: userId,
-            type: "FOLLOW",
-          },
-        });
-      },
-    );
+      await tx.notification.deleteMany({
+        where: {
+          issuerId: loggedInUser.id,
+          recipientId: userId,
+          type: "FOLLOW",
+        },
+      });
+    });
 
     return new NextResponse();
   } catch (error) {
